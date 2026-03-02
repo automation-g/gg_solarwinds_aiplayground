@@ -73,9 +73,9 @@ still_open_label = f"{still_open_today} ({overdue_today} overdue)" if overdue_to
 # ── Charts ───────────────────────────────────────────────────────────────────
 chart_opts = dict(full_html=False, include_plotlyjs=False)
 
-# Daily volume trend
-daily_counts = df.groupby("Date").size().reset_index(name="Tickets").sort_values("Date")
-fig_vol = px.bar(daily_counts, x="Date", y="Tickets", title="Daily Volume Trend", text="Tickets", color_discrete_sequence=["#636EFA"])
+# Daily volume trend — show last 5 days max for readability
+daily_counts = df.groupby("Date").size().reset_index(name="Tickets").sort_values("Date").tail(5)
+fig_vol = px.bar(daily_counts, x="Date", y="Tickets", title="Daily Volume Trend (Last 5 Days)", text="Tickets", color_discrete_sequence=["#636EFA"])
 fig_vol.update_traces(textposition="outside")
 fig_vol.update_layout(xaxis_title="", yaxis_title="Tickets", margin=dict(t=40, b=20))
 chart_volume = pio.to_html(fig_vol, **chart_opts)
@@ -204,8 +204,8 @@ page_html = f"""<!DOCTYPE html>
   .charts-row {{ display: flex; gap: 16px; flex-wrap: wrap; }}
   .chart-box {{ background: #fff; border-radius: 10px; padding: 12px; flex: 1; min-width: 400px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }}
   .chart-full {{ background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-top: 16px; }}
-  .subcat-table-scroll {{ max-height: 350px; overflow-y: auto; }}
-  .subcat-chart {{ min-height: 450px; }}
+  .subcat-table-scroll {{ height: 450px; overflow-y: auto; }}
+  .subcat-chart {{ height: 450px; }}
   .data-table {{ width: 100%; border-collapse: collapse; font-size: 0.85rem; }}
   .data-table th {{ background: #1a1a2e; color: #fff; padding: 10px 12px; text-align: left; position: sticky; top: 0; }}
   .data-table td {{ padding: 8px 12px; border-bottom: 1px solid #e8e8e8; }}
@@ -232,18 +232,12 @@ page_html = f"""<!DOCTYPE html>
 
   <div class="section-label">Date Range</div>
   <div class="info-box">
-    <div class="label">Look back</div>
-    <select id="daysBack" style="margin-top:4px;">
-      <option value="1" {"selected" if days_back == 1 else ""}>1 day (Today)</option>
-      <option value="3" {"selected" if days_back == 3 else ""}>3 days</option>
-      <option value="7" {"selected" if days_back == 7 else ""}>7 days</option>
-      <option value="14" {"selected" if days_back == 14 else ""}>14 days</option>
-      <option value="30" {"selected" if days_back == 30 else ""}>30 days</option>
-    </select>
+    <div class="label">From</div>
+    <input type="date" id="dateFrom" value="{start_date}" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(255,255,255,0.1);color:#fff;margin-top:4px;font-size:0.85rem;">
   </div>
   <div class="info-box">
-    <div class="label">Currently showing</div>
-    <div class="value" style="font-size:0.85rem;">{start_date} to {today}</div>
+    <div class="label">To</div>
+    <input type="date" id="dateTo" value="{today}" max="{today}" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(255,255,255,0.1);color:#fff;margin-top:4px;font-size:0.85rem;">
   </div>
 
   <button class="btn" id="refreshBtn" onclick="triggerRefresh()">Refresh with New Data</button>
@@ -341,7 +335,10 @@ const WORKFLOW = 'deploy.yml';
 async function triggerRefresh() {{
   const btn = document.getElementById('refreshBtn');
   const status = document.getElementById('refreshStatus');
-  const days = document.getElementById('daysBack').value;
+  const dateFrom = document.getElementById('dateFrom').value;
+  const dateTo = document.getElementById('dateTo').value;
+  const diffMs = new Date(dateTo) - new Date(dateFrom);
+  const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24))).toString();
 
   if (!GH_PAT) {{
     // Fallback: open GitHub Actions page

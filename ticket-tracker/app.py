@@ -120,14 +120,14 @@ st.divider()
 # ── Charts ───────────────────────────────────────────────────────────────────
 c1, c2 = st.columns(2)
 
-# Daily volume trend
+# Daily volume trend — show last 5 days max
 daily_counts = df.groupby("Date").size().reset_index(name="Tickets")
-daily_counts = daily_counts.sort_values("Date")
+daily_counts = daily_counts.sort_values("Date").tail(5)
 fig_vol = px.bar(
     daily_counts,
     x="Date",
     y="Tickets",
-    title="Daily Volume Trend",
+    title="Daily Volume Trend (Last 5 Days)",
     text="Tickets",
     color_discrete_sequence=["#636EFA"],
 )
