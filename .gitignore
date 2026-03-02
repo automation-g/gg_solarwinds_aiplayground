@@ -1,0 +1,23 @@
+# Secrets
+.env
+.claude/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# Generated
+index.html
+ticket-tracker/build_tracker_extracted.mjs
+
+# Large / data files
+*.jpg
+*.jpeg
+*.png
+*.pdf
+*.xlsx
+*.csv

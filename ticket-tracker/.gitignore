@@ -1,0 +1,6 @@
+.env
+.venv/
+__pycache__/
+index.html
+node_modules/
+build_tracker_extracted.mjs
