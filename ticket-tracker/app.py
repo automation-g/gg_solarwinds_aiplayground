@@ -120,19 +120,24 @@ st.divider()
 # ── Charts ───────────────────────────────────────────────────────────────────
 c1, c2 = st.columns(2)
 
-# Daily volume trend — show last 5 days max
+# Daily volume trend — date labels on x-axis
 daily_counts = df.groupby("Date").size().reset_index(name="Tickets")
-daily_counts = daily_counts.sort_values("Date").tail(5)
+daily_counts = daily_counts.sort_values("Date")
+daily_counts["Day"] = daily_counts["Date"].apply(lambda d: pd.Timestamp(d).strftime("%b %d\n%a"))
 fig_vol = px.bar(
     daily_counts,
-    x="Date",
+    x="Day",
     y="Tickets",
-    title="Daily Volume Trend (Last 5 Days)",
+    title="Daily Volume Trend",
     text="Tickets",
     color_discrete_sequence=["#636EFA"],
 )
 fig_vol.update_traces(textposition="outside")
-fig_vol.update_layout(xaxis_title="", yaxis_title="Tickets", margin=dict(t=40, b=20))
+fig_vol.update_layout(
+    xaxis_title="", yaxis_title="Tickets",
+    xaxis=dict(type="category", tickangle=0),
+    margin=dict(t=40, b=40), height=350,
+)
 c1.plotly_chart(fig_vol, use_container_width=True)
 
 # Subcategory breakdown — today's tickets only
