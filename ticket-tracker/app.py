@@ -238,7 +238,7 @@ def build_daily_summary(data: pd.DataFrame) -> pd.DataFrame:
                 "Closed": closed,
                 "Resolved": resolved,
                 "Still Open": still_open,
-                "Top Problem Area": top_cat,
+                "Top Category Area": top_cat,
                 "Top Subcategory": top_subcat,
                 "Escalations": escalations,
                 "Overdue": overdue_count,

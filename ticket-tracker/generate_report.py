@@ -141,7 +141,7 @@ for date, grp in df.groupby("Date"):
     summary_rows.append(
         {
             "Date": date, "Day": day_name, "Raised": raised, "Closed": closed,
-            "Resolved": resolved, "Still Open": still_open, "Top Problem Area": top_cat,
+            "Resolved": resolved, "Still Open": still_open, "Top Category Area": top_cat,
             "Top Subcategory": top_subcat, "Escalations": escalations, "Overdue": overdue_count,
         }
     )
@@ -179,7 +179,7 @@ page_html = f"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="refresh" content="1800">
-<title>IT Ticket Tracker</title>
+<title>IT Ticket Tracker (Beta)</title>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
@@ -234,7 +234,7 @@ page_html = f"""<!DOCTYPE html>
 
 <!-- Sidebar -->
 <div class="sidebar">
-  <h1>IT Ticket Tracker</h1>
+  <h1>IT Ticket Tracker (Beta)</h1>
 
   <div class="section-label">Date Range</div>
   <div class="info-box">
