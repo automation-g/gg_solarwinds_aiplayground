@@ -1,4 +1,6 @@
-"""Generate a static HTML report for GitHub Pages deployment."""
+"""Generate a static HTML report for GitHub Pages deployment.
+
+Outputs index.html with embedded Plotly charts, sidebar controls, and live refresh."""
 
 from __future__ import annotations
 
