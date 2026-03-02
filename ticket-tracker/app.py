@@ -222,8 +222,9 @@ def build_daily_summary(data: pd.DataFrame) -> pd.DataFrame:
         still_open = int(
             grp["State"].str.lower().isin(["new", "assigned", "awaiting input", "in progress"]).sum()
         )
-        top_cat = grp["Category"].value_counts().idxmax() if not grp["Category"].empty else ""
-        subcat_series = grp["Subcategory"][grp["Subcategory"] != ""]
+        cat_series = grp["Category"][grp["Category"].fillna("").str.strip() != ""]
+        top_cat = cat_series.value_counts().idxmax() if not cat_series.empty else ""
+        subcat_series = grp["Subcategory"][grp["Subcategory"].fillna("").str.strip() != ""]
         top_subcat = subcat_series.value_counts().idxmax() if not subcat_series.empty else ""
         escalations = int(grp["Is Escalated"].sum())
         overdue_count = int(
