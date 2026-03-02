@@ -150,6 +150,13 @@ raw_tickets_html = raw_df.to_html(index=False, classes="data-table", table_id="r
 csv_data = raw_df.to_csv(index=False)
 csv_b64 = __import__("base64").b64encode(csv_data.encode()).decode()
 
+# Filter options for raw tickets
+state_options = "\n".join(f'<option value="{s}">{s}</option>' for s in sorted(df["State"].dropna().unique()))
+priority_options = "\n".join(f'<option value="{p}">{p}</option>' for p in sorted(df["Priority"].dropna().unique()))
+category_options = "\n".join(f'<option value="{c}">{c}</option>' for c in sorted(df["Category"].dropna().unique()))
+subcat_list = sorted([s for s in df["Subcategory"].dropna().unique() if s != ""])
+subcategory_options = "\n".join(f'<option value="{s}">{s}</option>' for s in subcat_list)
+
 # ── Build HTML ───────────────────────────────────────────────────────────────
 generated_at = now_utc.strftime("%Y-%m-%d %H:%M UTC")
 
@@ -163,10 +170,26 @@ page_html = f"""<!DOCTYPE html>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; color: #1a1a2e; padding: 20px; }}
-  h1 {{ font-size: 1.6rem; margin-bottom: 4px; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; color: #1a1a2e; display: flex; min-height: 100vh; }}
+
+  /* Sidebar */
+  .sidebar {{ width: 260px; background: #1a1a2e; color: #fff; padding: 24px 16px; flex-shrink: 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; }}
+  .sidebar h1 {{ font-size: 1.2rem; margin-bottom: 24px; color: #fff; }}
+  .sidebar .section-label {{ font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #8888aa; margin: 20px 0 8px; }}
+  .sidebar .info-box {{ background: rgba(255,255,255,0.08); border-radius: 8px; padding: 12px; margin-bottom: 12px; }}
+  .sidebar .info-box .label {{ font-size: 0.75rem; color: #aaa; }}
+  .sidebar .info-box .value {{ font-size: 0.95rem; font-weight: 600; margin-top: 2px; }}
+  .sidebar .btn {{ display: block; width: 100%; padding: 10px; background: #4472C4; color: #fff; border: none; border-radius: 6px; font-size: 0.85rem; cursor: pointer; text-align: center; margin-top: 8px; text-decoration: none; }}
+  .sidebar .btn:hover {{ background: #3561b0; }}
+  .sidebar .btn-outline {{ background: transparent; border: 1px solid rgba(255,255,255,0.3); }}
+  .sidebar .btn-outline:hover {{ background: rgba(255,255,255,0.1); }}
+  .sidebar .status-dot {{ display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4ade80; margin-right: 6px; }}
+  .sidebar select {{ width: 100%; padding: 8px; border-radius: 6px; border: none; font-size: 0.85rem; margin-top: 4px; background: rgba(255,255,255,0.1); color: #fff; }}
+  .sidebar select option {{ background: #1a1a2e; color: #fff; }}
+
+  /* Main content */
+  .main {{ margin-left: 260px; padding: 24px; flex: 1; }}
   h2 {{ font-size: 1.2rem; margin: 24px 0 12px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 6px; }}
-  .timestamp {{ color: #888; font-size: 0.85rem; margin-bottom: 20px; }}
   .kpi-row {{ display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }}
   .kpi-card {{ background: #fff; border-radius: 10px; padding: 16px 24px; flex: 1; min-width: 140px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); text-align: center; }}
   .kpi-card .label {{ font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }}
@@ -179,15 +202,64 @@ page_html = f"""<!DOCTYPE html>
   .data-table td {{ padding: 8px 12px; border-bottom: 1px solid #e8e8e8; }}
   .data-table tr:hover td {{ background: #f0f4ff; }}
   .table-wrap {{ background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-top: 16px; max-height: 500px; overflow: auto; }}
-  .btn {{ display: inline-block; padding: 10px 20px; background: #1a1a2e; color: #fff; border-radius: 6px; text-decoration: none; font-size: 0.85rem; margin-top: 10px; cursor: pointer; border: none; }}
-  .btn:hover {{ background: #2d2d5e; }}
+  .content-btn {{ display: inline-block; padding: 10px 20px; background: #1a1a2e; color: #fff; border-radius: 6px; text-decoration: none; font-size: 0.85rem; margin-top: 10px; cursor: pointer; border: none; }}
+  .content-btn:hover {{ background: #2d2d5e; }}
   .search-box {{ padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; width: 300px; margin-bottom: 10px; font-size: 0.85rem; }}
+  .filter-row {{ display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }}
+  .filter-row select {{ padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; min-width: 160px; }}
+
+  @media (max-width: 900px) {{
+    .sidebar {{ position: relative; width: 100%; }}
+    .main {{ margin-left: 0; }}
+    body {{ flex-direction: column; }}
+  }}
 </style>
 </head>
 <body>
 
-<h1>IT Daily Ticket Tracker</h1>
-<p class="timestamp">Last updated: {generated_at} &middot; Auto-refreshes every 30 minutes &middot; Data range: {start_date} to {today}</p>
+<!-- Sidebar -->
+<div class="sidebar">
+  <h1>IT Ticket Tracker</h1>
+
+  <div class="section-label">Date Range</div>
+  <div class="info-box">
+    <div class="label">From</div>
+    <div class="value">{start_date}</div>
+  </div>
+  <div class="info-box">
+    <div class="label">To</div>
+    <div class="value">{today}</div>
+  </div>
+
+  <div class="section-label">Data Status</div>
+  <div class="info-box">
+    <div class="label"><span class="status-dot"></span>Auto-refresh</div>
+    <div class="value">Every 30 minutes</div>
+  </div>
+  <div class="info-box">
+    <div class="label">Last Updated</div>
+    <div class="value">{generated_at}</div>
+  </div>
+
+  <button class="btn" onclick="location.reload()">Refresh Now</button>
+
+  <div class="section-label">Quick Stats</div>
+  <div class="info-box">
+    <div class="label">Total Tickets (7 days)</div>
+    <div class="value">{len(df)}</div>
+  </div>
+  <div class="info-box">
+    <div class="label">Today's Tickets</div>
+    <div class="value">{raised_today}</div>
+  </div>
+
+  <div style="margin-top:20px;">
+    <a class="btn btn-outline" href="data:text/csv;base64,{csv_b64}" download="tickets_{start_date}_{today}.csv">Download CSV</a>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="main">
 
 <h2>Today's Summary</h2>
 <div class="kpi-row">
@@ -222,16 +294,46 @@ page_html = f"""<!DOCTYPE html>
 <div class="table-wrap">{daily_summary_html}</div>
 
 <h2>Raw Tickets</h2>
-<input class="search-box" type="text" id="search" placeholder="Search tickets..." onkeyup="filterTable()">
-<a class="btn" href="data:text/csv;base64,{csv_b64}" download="tickets_{start_date}_{today}.csv">Download CSV</a>
+<div class="filter-row">
+  <select id="filterState" onchange="filterTable()">
+    <option value="">All States</option>
+    {state_options}
+  </select>
+  <select id="filterPriority" onchange="filterTable()">
+    <option value="">All Priorities</option>
+    {priority_options}
+  </select>
+  <select id="filterCategory" onchange="filterTable()">
+    <option value="">All Categories</option>
+    {category_options}
+  </select>
+  <select id="filterSubcategory" onchange="filterTable()">
+    <option value="">All Subcategories</option>
+    {subcategory_options}
+  </select>
+  <input class="search-box" type="text" id="search" placeholder="Search..." onkeyup="filterTable()" style="margin:0;">
+</div>
 <div class="table-wrap">{raw_tickets_html}</div>
+
+</div><!-- end .main -->
 
 <script>
 function filterTable() {{
   const q = document.getElementById('search').value.toLowerCase();
+  const state = document.getElementById('filterState').value;
+  const priority = document.getElementById('filterPriority').value;
+  const category = document.getElementById('filterCategory').value;
+  const subcategory = document.getElementById('filterSubcategory').value;
   const rows = document.querySelectorAll('#raw-tickets tbody tr');
   rows.forEach(row => {{
-    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    const cells = row.querySelectorAll('td');
+    const text = row.textContent.toLowerCase();
+    const matchSearch = !q || text.includes(q);
+    const matchState = !state || (cells[2] && cells[2].textContent.trim() === state);
+    const matchPriority = !priority || (cells[3] && cells[3].textContent.trim() === priority);
+    const matchCategory = !category || (cells[4] && cells[4].textContent.trim() === category);
+    const matchSubcategory = !subcategory || (cells[5] && cells[5].textContent.trim() === subcategory);
+    row.style.display = (matchSearch && matchState && matchPriority && matchCategory && matchSubcategory) ? '' : 'none';
   }});
 }}
 </script>
