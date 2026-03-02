@@ -311,6 +311,9 @@ page_html = f"""<!DOCTYPE html>
 <div class="table-wrap">{daily_summary_html}</div>
 
 <h2>Raw Tickets</h2>
+<div style="margin-bottom:12px;">
+  <a class="content-btn" href="data:text/csv;base64,{csv_b64}" download="tickets_{start_date}_{today}.csv">Export CSV</a>
+</div>
 <div class="filter-row">
   <select id="filterState" onchange="filterTable()">
     <option value="">All States</option>
