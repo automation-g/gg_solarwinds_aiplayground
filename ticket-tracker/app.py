@@ -157,7 +157,7 @@ else:
         # Add percentage column
         total = subcat_table["Tickets"].sum()
         subcat_table["% of Total"] = (subcat_table["Tickets"] / total * 100).round(1)
-        sc1.dataframe(subcat_table, use_container_width=True, hide_index=True)
+        sc1.dataframe(subcat_table, use_container_width=True, hide_index=True, height=350)
     else:
         sc1.info("No subcategory data for today.")
 
@@ -171,7 +171,7 @@ else:
             title="Today's Category → Subcategory",
         )
         fig_sun.update_traces(textinfo="label+percent entry")
-        fig_sun.update_layout(margin=dict(t=40, b=20))
+        fig_sun.update_layout(margin=dict(t=40, b=20), height=450)
         sc2.plotly_chart(fig_sun, use_container_width=True)
 
 # Daily subcategory stacked bar chart

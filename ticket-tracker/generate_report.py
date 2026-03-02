@@ -108,7 +108,7 @@ if not df_today.empty:
     if not sunburst_data.empty:
         fig_sun = px.sunburst(sunburst_data, path=["Category", "Subcategory"], values="Count", title="Today's Category → Subcategory")
         fig_sun.update_traces(textinfo="label+percent entry")
-        fig_sun.update_layout(margin=dict(t=40, b=20))
+        fig_sun.update_layout(margin=dict(t=40, b=20), height=450)
         chart_sunburst = pio.to_html(fig_sun, **chart_opts)
 
 # Daily subcategory stacked bar
@@ -204,6 +204,8 @@ page_html = f"""<!DOCTYPE html>
   .charts-row {{ display: flex; gap: 16px; flex-wrap: wrap; }}
   .chart-box {{ background: #fff; border-radius: 10px; padding: 12px; flex: 1; min-width: 400px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }}
   .chart-full {{ background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-top: 16px; }}
+  .subcat-table-scroll {{ max-height: 350px; overflow-y: auto; }}
+  .subcat-chart {{ min-height: 450px; }}
   .data-table {{ width: 100%; border-collapse: collapse; font-size: 0.85rem; }}
   .data-table th {{ background: #1a1a2e; color: #fff; padding: 10px 12px; text-align: left; position: sticky; top: 0; }}
   .data-table td {{ padding: 8px 12px; border-bottom: 1px solid #e8e8e8; }}
@@ -298,8 +300,8 @@ page_html = f"""<!DOCTYPE html>
 
 <h2>Subcategory Breakdown (Today)</h2>
 <div class="charts-row">
-  <div class="chart-box">{subcat_table_html if subcat_table_html else '<p style="padding:20px;color:#888;">No subcategory data for today.</p>'}</div>
-  <div class="chart-box">{chart_sunburst if chart_sunburst else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
+  <div class="chart-box subcat-table-scroll">{subcat_table_html if subcat_table_html else '<p style="padding:20px;color:#888;">No subcategory data for today.</p>'}</div>
+  <div class="chart-box subcat-chart">{chart_sunburst if chart_sunburst else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
 </div>
 
 <div class="chart-full">{chart_daily_subcat}</div>
