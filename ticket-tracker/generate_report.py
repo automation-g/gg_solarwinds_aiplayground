@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import html
+import os
 
 import pandas as pd
 import plotly.express as px
@@ -13,7 +14,8 @@ from api_client import fetch_incidents, safe_get
 
 # ── Fetch data ───────────────────────────────────────────────────────────────
 today = datetime.date.today()
-start_date = today - datetime.timedelta(days=7)
+days_back = int(os.getenv("DAYS_BACK", "7"))
+start_date = today - datetime.timedelta(days=days_back)
 start_str = start_date.strftime("%Y-%m-%dT00:00:00Z")
 end_str = today.strftime("%Y-%m-%dT23:59:59Z")
 
@@ -157,6 +159,9 @@ category_options = "\n".join(f'<option value="{c}">{c}</option>' for c in sorted
 subcat_list = sorted([s for s in df["Subcategory"].dropna().unique() if s != ""])
 subcategory_options = "\n".join(f'<option value="{s}">{s}</option>' for s in subcat_list)
 
+# GitHub PAT for dispatch (embedded securely — only has actions scope)
+gh_pat = os.getenv("GH_PAT", "")
+
 # ── Build HTML ───────────────────────────────────────────────────────────────
 generated_at = now_utc.strftime("%Y-%m-%d %H:%M UTC")
 
@@ -223,13 +228,22 @@ page_html = f"""<!DOCTYPE html>
 
   <div class="section-label">Date Range</div>
   <div class="info-box">
-    <div class="label">From</div>
-    <div class="value">{start_date}</div>
+    <div class="label">Look back</div>
+    <select id="daysBack" style="margin-top:4px;">
+      <option value="1" {"selected" if days_back == 1 else ""}>1 day (Today)</option>
+      <option value="3" {"selected" if days_back == 3 else ""}>3 days</option>
+      <option value="7" {"selected" if days_back == 7 else ""}>7 days</option>
+      <option value="14" {"selected" if days_back == 14 else ""}>14 days</option>
+      <option value="30" {"selected" if days_back == 30 else ""}>30 days</option>
+    </select>
   </div>
   <div class="info-box">
-    <div class="label">To</div>
-    <div class="value">{today}</div>
+    <div class="label">Currently showing</div>
+    <div class="value" style="font-size:0.85rem;">{start_date} to {today}</div>
   </div>
+
+  <button class="btn" id="refreshBtn" onclick="triggerRefresh()">Refresh with New Data</button>
+  <div id="refreshStatus" style="font-size:0.75rem;color:#4ade80;margin-top:6px;display:none;"></div>
 
   <div class="section-label">Data Status</div>
   <div class="info-box">
@@ -241,11 +255,9 @@ page_html = f"""<!DOCTYPE html>
     <div class="value">{generated_at}</div>
   </div>
 
-  <button class="btn" onclick="location.reload()">Refresh Now</button>
-
   <div class="section-label">Quick Stats</div>
   <div class="info-box">
-    <div class="label">Total Tickets (7 days)</div>
+    <div class="label">Total Tickets ({days_back} days)</div>
     <div class="value">{len(df)}</div>
   </div>
   <div class="info-box">
@@ -318,6 +330,57 @@ page_html = f"""<!DOCTYPE html>
 </div><!-- end .main -->
 
 <script>
+const GH_PAT = '{gh_pat}';
+const REPO = 'automation-g/gg_solarwinds_aiplayground';
+const WORKFLOW = 'deploy.yml';
+
+async function triggerRefresh() {{
+  const btn = document.getElementById('refreshBtn');
+  const status = document.getElementById('refreshStatus');
+  const days = document.getElementById('daysBack').value;
+
+  if (!GH_PAT) {{
+    // Fallback: open GitHub Actions page
+    window.open(`https://github.com/${{REPO}}/actions/workflows/${{WORKFLOW}}`, '_blank');
+    return;
+  }}
+
+  btn.disabled = true;
+  btn.textContent = 'Triggering build...';
+  status.style.display = 'block';
+  status.textContent = 'Sending dispatch request...';
+
+  try {{
+    const resp = await fetch(`https://api.github.com/repos/${{REPO}}/actions/workflows/${{WORKFLOW}}/dispatches`, {{
+      method: 'POST',
+      headers: {{
+        'Authorization': `Bearer ${{GH_PAT}}`,
+        'Accept': 'application/vnd.github.v3+json',
+      }},
+      body: JSON.stringify({{ ref: 'main', inputs: {{ days_back: days }} }})
+    }});
+
+    if (resp.status === 204) {{
+      status.textContent = 'Build triggered! Page will update in ~2 minutes.';
+      status.style.color = '#4ade80';
+      btn.textContent = 'Build running...';
+      // Auto-reload after 2.5 minutes
+      setTimeout(() => location.reload(), 150000);
+    }} else {{
+      const err = await resp.text();
+      status.textContent = `Error: ${{resp.status}}`;
+      status.style.color = '#f87171';
+      btn.textContent = 'Refresh with New Data';
+      btn.disabled = false;
+    }}
+  }} catch (e) {{
+    status.textContent = 'Network error';
+    status.style.color = '#f87171';
+    btn.textContent = 'Refresh with New Data';
+    btn.disabled = false;
+  }}
+}}
+
 function filterTable() {{
   const q = document.getElementById('search').value.toLowerCase();
   const state = document.getElementById('filterState').value;

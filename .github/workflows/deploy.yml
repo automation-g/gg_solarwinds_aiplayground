@@ -3,7 +3,13 @@ name: Generate & Deploy Report
 on:
   schedule:
     - cron: "*/30 6-18 * * 0-4"  # Every 30 min, Sun-Thu 6am-6pm (UAE work hours)
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      days_back:
+        description: "Number of days to look back"
+        required: false
+        default: "7"
+        type: string
   push:
     branches: [main]
 
@@ -36,6 +42,8 @@ jobs:
         env:
           SOLARWINDS_API_TOKEN: ${{ secrets.SOLARWINDS_API_TOKEN }}
           SOLARWINDS_REGION: ${{ secrets.SOLARWINDS_REGION }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          DAYS_BACK: ${{ inputs.days_back || '7' }}
         run: python generate_report.py
 
       - name: Upload Pages artifact
