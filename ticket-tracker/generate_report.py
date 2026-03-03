@@ -278,6 +278,38 @@ if res_by_agent:
     )
     chart_resolution_agent = pio.to_html(fig_res_agent, **chart_opts)
 
+# Chart: Resolutions by agent for today's tickets only (created AND resolved today)
+chart_resolution_today_only = ""
+res_today_only = defaultdict(int)
+for r in resolved_today_list:
+    created = r.get("created_at", "")
+    if today_str in str(created):
+        assignee = safe_get(r, "assignee", "name") or "Unassigned"
+        res_today_only[assignee] += 1
+
+total_resolved_today_only = sum(res_today_only.values())
+if res_today_only:
+    res_today_df = pd.DataFrame(
+        sorted(res_today_only.items(), key=lambda x: x[1]),
+        columns=["Agent", "Resolved"],
+    )
+    fig_res_today = px.bar(
+        res_today_df, x="Resolved", y="Agent", orientation="h",
+        title=f"Today's Tickets Resolved by Agent — Total: {total_resolved_today_only}",
+        text="Resolved", color="Resolved",
+        color_continuous_scale=["#b8d4a8", "#00cc96", "#1a7a5c", "#0d4030"],
+    )
+    fig_res_today.update_traces(textposition="outside")
+    fig_res_today.update_layout(
+        xaxis_title="Resolved Tickets", yaxis_title="",
+        showlegend=False, coloraxis_showscale=False,
+        margin=dict(l=160, t=40, r=40, b=40),
+        height=max(350, len(res_today_df) * 35 + 80),
+        xaxis=dict(fixedrange=True),
+        yaxis=dict(fixedrange=True, automargin=True),
+    )
+    chart_resolution_today_only = pio.to_html(fig_res_today, **chart_opts)
+
 # ── Metrics ──────────────────────────────────────────────────────────────────
 now_utc = pd.Timestamp.now(tz="UTC")
 today_mask = df["Date"] == today
@@ -533,7 +565,10 @@ page_html = f"""<!DOCTYPE html>
 </div>
 
 <h2>Resolutions by Agent (Today)</h2>
-{f'<div class="chart-full">{chart_resolution_agent}</div>' if chart_resolution_agent else '<p style="padding:20px;color:#888;">No resolved tickets today.</p>'}
+<div class="charts-row">
+  <div class="chart-box">{chart_resolution_agent if chart_resolution_agent else '<p style="padding:20px;color:#888;">No resolved tickets today.</p>'}</div>
+  <div class="chart-box">{chart_resolution_today_only if chart_resolution_today_only else '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>'}</div>
+</div>
 
 <h2>Subcategory Breakdown (Today)</h2>
 <div class="charts-row">
