@@ -228,6 +228,41 @@ if not all_agent_util_df.empty:
         )
         chart_all_agent_group = pio.to_html(fig_all_group, **chart_opts)
 
+# ── Resolutions by Agent (today) ──────────────────────────────────────────────
+# Use updated_today_raw (already excludes Internal) and filter to resolved/closed
+resolved_today_list = [
+    r for r in updated_today_raw
+    if (r.get("state", {}) or {}).get("name", "").strip().lower() in ("resolved", "closed")
+]
+res_by_agent = defaultdict(int)
+for r in resolved_today_list:
+    assignee = safe_get(r, "assignee", "name") or "Unassigned"
+    res_by_agent[assignee] += 1
+
+chart_resolution_agent = ""
+total_resolved_by_agent = sum(res_by_agent.values())
+if res_by_agent:
+    res_agent_df = pd.DataFrame(
+        sorted(res_by_agent.items(), key=lambda x: x[1]),
+        columns=["Agent", "Resolved"],
+    )
+    fig_res_agent = px.bar(
+        res_agent_df, x="Resolved", y="Agent", orientation="h",
+        title=f"Tickets Resolved Today by Agent (excl. Internal) — Total: {total_resolved_by_agent}",
+        text="Resolved", color="Resolved",
+        color_continuous_scale=["#a0a7e8", "#636EFA", "#2d2d5e", "#1a1a2e"],
+    )
+    fig_res_agent.update_traces(textposition="outside")
+    fig_res_agent.update_layout(
+        xaxis_title="Resolved Tickets", yaxis_title="",
+        showlegend=False, coloraxis_showscale=False,
+        margin=dict(l=160, t=40, r=40, b=40),
+        height=max(350, len(res_agent_df) * 35 + 80),
+        xaxis=dict(fixedrange=True),
+        yaxis=dict(fixedrange=True, automargin=True),
+    )
+    chart_resolution_agent = pio.to_html(fig_res_agent, **chart_opts)
+
 # ── Metrics ──────────────────────────────────────────────────────────────────
 now_utc = pd.Timestamp.now(tz="UTC")
 today_mask = df["Date"] == today
@@ -481,6 +516,9 @@ page_html = f"""<!DOCTYPE html>
   <div class="chart-box">{chart_volume}</div>
   <div class="chart-box">{chart_state}</div>
 </div>
+
+<h2>Resolutions by Agent (Today)</h2>
+{f'<div class="chart-full">{chart_resolution_agent}</div>' if chart_resolution_agent else '<p style="padding:20px;color:#888;">No resolved tickets today.</p>'}
 
 <h2>Subcategory Breakdown (Today)</h2>
 <div class="charts-row">
