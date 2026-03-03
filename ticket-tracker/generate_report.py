@@ -12,7 +12,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.io as pio
 
-from api_client import fetch_incidents, fetch_incidents_updated, fetch_incidents_with_details, fetch_time_tracks, fetch_agent_groups, safe_get
+from api_client import fetch_incidents, fetch_incidents_updated, fetch_incidents_with_details, fetch_time_tracks, fetch_agent_groups, fetch_resolved_dates, safe_get
 
 # ── Fetch data ───────────────────────────────────────────────────────────────
 today = datetime.date.today()
@@ -229,17 +229,25 @@ if not all_agent_util_df.empty:
         chart_all_agent_group = pio.to_html(fig_all_group, **chart_opts)
 
 # ── Resolutions by Agent (today) ──────────────────────────────────────────────
-# SolarWinds API has no resolved_at field. Use customer_satisfaction_survey_sent_at
-# (set at resolution time) as the resolution timestamp, falling back to updated_at.
-resolved_today_list = []
+# SolarWinds API has no resolved_at field. Fetch the actual resolution date
+# from the audit trail (state change to Resolved/Closed).
+resolved_candidates = []
 for r in updated_detailed:
     state_val = r.get("state", "")
     if isinstance(state_val, dict):
         state_val = state_val.get("name", "")
-    if str(state_val).strip().lower() not in ("resolved", "closed"):
-        continue
-    resolved_date = r.get("customer_satisfaction_survey_sent_at") or r.get("updated_at") or ""
-    if today_str in str(resolved_date):
+    if str(state_val).strip().lower() in ("resolved", "closed"):
+        resolved_candidates.append(r)
+
+print(f"Fetching resolution dates from audit trail for {len(resolved_candidates)} tickets...")
+resolved_dates = fetch_resolved_dates(resolved_candidates)
+print(f"Got {len(resolved_dates)} resolution dates")
+
+resolved_today_list = []
+for r in resolved_candidates:
+    inc_id = r.get("id", 0)
+    resolved_at = resolved_dates.get(inc_id, "")
+    if today_str in str(resolved_at):
         resolved_today_list.append(r)
 res_by_agent = defaultdict(int)
 for r in resolved_today_list:

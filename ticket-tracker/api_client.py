@@ -159,6 +159,36 @@ def fetch_agent_groups() -> dict[str, str]:
     return agent_to_group
 
 
+def fetch_resolved_dates(incidents: list[dict[str, Any]], max_workers: int = 10) -> dict[int, str]:
+    """Fetch the resolved_at date for each incident from the audit trail.
+
+    Returns a mapping of incident_id -> resolved_at ISO timestamp.
+    The resolution date is extracted from the audit entry where the state
+    changed to 'Resolved' or 'Closed'.
+    """
+    import re
+
+    def _fetch_audit(inc: dict[str, Any]) -> tuple[int, str]:
+        inc_id = inc.get("id", 0)
+        try:
+            resp = _get(f"/incidents/{inc_id}/audits.json")
+            audits = resp.json()
+            for audit in audits:
+                msg = audit.get("message", "")
+                if re.search(r"'State'.*changed.*to.*'(Resolved|Closed)'", msg, re.IGNORECASE):
+                    return (inc_id, audit.get("created_at", ""))
+        except Exception:
+            pass
+        return (inc_id, "")
+
+    results: dict[int, str] = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        for inc_id, resolved_at in pool.map(_fetch_audit, incidents):
+            if resolved_at:
+                results[inc_id] = resolved_at
+    return results
+
+
 def safe_get(d: dict, *keys: str, default: str = "") -> str:
     """Safely navigate nested dicts."""
     current = d
