@@ -8,7 +8,9 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from api_client import fetch_incidents, safe_get
+from collections import defaultdict
+
+from api_client import fetch_incidents, fetch_incidents_with_details, fetch_time_tracks, safe_get
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="IT Ticket Tracker", layout="wide")
@@ -108,6 +110,51 @@ k1.metric("Raised", raised_today)
 k2.metric("Closed", closed_today)
 k3.metric("Resolved", resolved_today)
 k4.metric("Still Open", f"{still_open_today}  ({overdue_today} overdue)" if overdue_today else still_open_today)
+
+# ── Agent Utilization (Today) ───────────────────────────────────────────────
+st.markdown("### Agent Utilization (Today)")
+with st.spinner("Fetching time tracks..."):
+    today_raw_list = [r for r in load_data.__wrapped__(start_str, end_str) if False] if False else []
+    # Re-fetch today's incidents from the raw API for time tracks
+    today_incidents_raw = fetch_incidents(
+        today.strftime("%Y-%m-%dT00:00:00Z"),
+        today.strftime("%Y-%m-%dT23:59:59Z"),
+    )
+    today_detailed = fetch_incidents_with_details(today_incidents_raw)
+    time_tracks = fetch_time_tracks(today_detailed)
+
+agent_util: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "entries": 0, "tickets_assigned": 0, "tasks": []})
+
+for r in today_incidents_raw:
+    assignee = safe_get(r, "assignee", "name")
+    if assignee:
+        agent_util[assignee]["tickets_assigned"] += 1
+
+for tt in time_tracks:
+    creator = tt.get("creator", {}).get("name", "Unknown")
+    mins = tt.get("minutes", 0)
+    task_name = tt.get("name", "")
+    agent_util[creator]["minutes"] += mins
+    agent_util[creator]["entries"] += 1
+    agent_util[creator]["tasks"].append(f"{task_name} ({mins}m)")
+
+agent_rows = []
+for agent, data in sorted(agent_util.items(), key=lambda x: -x[1]["minutes"]):
+    total_mins = data["minutes"]
+    hrs = total_mins // 60
+    mins_rem = total_mins % 60
+    agent_rows.append({
+        "Agent": agent,
+        "Tickets Assigned": data["tickets_assigned"],
+        "Time Logged": f"{hrs}h {mins_rem}m" if total_mins > 0 else "-",
+        "Entries": data["entries"],
+        "Tasks": ", ".join(data["tasks"][:5]) if data["tasks"] else "-",
+    })
+
+if agent_rows:
+    st.dataframe(pd.DataFrame(agent_rows), use_container_width=True, hide_index=True)
+else:
+    st.info("No time tracking data for today.")
 
 st.markdown("### Overall Status")
 r1, r2, r3 = st.columns(3)

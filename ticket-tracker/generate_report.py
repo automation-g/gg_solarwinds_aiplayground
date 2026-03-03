@@ -12,7 +12,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.io as pio
 
-from api_client import fetch_incidents, safe_get
+from api_client import fetch_incidents, fetch_incidents_with_details, fetch_time_tracks, safe_get
 
 # ── Fetch data ───────────────────────────────────────────────────────────────
 today = datetime.date.today()
@@ -51,6 +51,47 @@ df["Updated"] = pd.to_datetime(df["Updated"], errors="coerce", utc=True)
 df["Due"] = pd.to_datetime(df["Due"], errors="coerce", utc=True)
 df["Resolved At"] = pd.to_datetime(df["Resolved At"], errors="coerce", utc=True)
 df["Date"] = df["Created"].dt.date
+
+# ── Agent Time Tracking (today only) ────────────────────────────────────────
+print("Fetching time tracks for today's tickets...")
+today_raw = [r for r in raw if pd.to_datetime(r.get("created_at", ""), utc=True).date() == today]
+today_detailed = fetch_incidents_with_details(today_raw)
+time_tracks = fetch_time_tracks(today_detailed)
+print(f"Got {len(time_tracks)} time track entries")
+
+from collections import defaultdict
+agent_util: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "entries": 0, "tickets_assigned": 0, "tasks": []})
+
+# Count tickets assigned per agent (today)
+for r in today_raw:
+    assignee = safe_get(r, "assignee", "name")
+    if assignee:
+        agent_util[assignee]["tickets_assigned"] += 1
+
+# Aggregate time tracks
+for tt in time_tracks:
+    creator = tt.get("creator", {}).get("name", "Unknown")
+    mins = tt.get("minutes", 0)
+    task_name = tt.get("name", "")
+    agent_util[creator]["minutes"] += mins
+    agent_util[creator]["entries"] += 1
+    agent_util[creator]["tasks"].append(f"{task_name} ({mins}m)")
+
+# Build agent utilization table
+agent_rows = []
+for agent, data in sorted(agent_util.items(), key=lambda x: -x[1]["minutes"]):
+    total_mins = data["minutes"]
+    hrs = total_mins // 60
+    mins = total_mins % 60
+    agent_rows.append({
+        "Agent": agent,
+        "Tickets Assigned": data["tickets_assigned"],
+        "Time Logged": f"{hrs}h {mins}m" if total_mins > 0 else "-",
+        "Entries": data["entries"],
+        "Tasks": ", ".join(data["tasks"][:5]) if data["tasks"] else "-",
+    })
+agent_util_df = pd.DataFrame(agent_rows) if agent_rows else pd.DataFrame()
+agent_util_html = agent_util_df.to_html(index=False, classes="data-table") if not agent_util_df.empty else ""
 
 # ── Metrics ──────────────────────────────────────────────────────────────────
 now_utc = pd.Timestamp.now(tz="UTC")
@@ -292,6 +333,9 @@ page_html = f"""<!DOCTYPE html>
   <div class="kpi-card"><div class="label">Resolved</div><div class="value">{resolved_today}</div></div>
   <div class="kpi-card"><div class="label">Still Open</div><div class="value">{html.escape(still_open_label)}</div></div>
 </div>
+
+<h2>Agent Utilization (Today)</h2>
+<div class="table-wrap">{agent_util_html if agent_util_html else '<p style="padding:20px;color:#888;">No time tracking data for today.</p>'}</div>
 
 <h2>Overall Status</h2>
 <div class="kpi-row">
