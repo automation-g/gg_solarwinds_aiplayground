@@ -232,7 +232,7 @@ if not all_agent_util_df.empty:
 # Use updated_today_raw (already excludes Internal) and filter to resolved/closed
 resolved_today_list = [
     r for r in updated_today_raw
-    if (r.get("state", {}) or {}).get("name", "").strip().lower() in ("resolved", "closed")
+    if safe_get(r, "state", "name").strip().lower() in ("resolved", "closed")
 ]
 res_by_agent = defaultdict(int)
 for r in resolved_today_list:
