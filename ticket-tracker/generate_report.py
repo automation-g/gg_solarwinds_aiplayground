@@ -349,15 +349,6 @@ page_html = f"""<!DOCTYPE html>
   <div class="kpi-card"><div class="label">Still Open</div><div class="value">{html.escape(still_open_label)}</div></div>
 </div>
 
-<h2>Agent Utilization (Today)</h2>
-<div class="filter-row">
-  <select id="filterGroup" onchange="filterAgentTable()">
-    <option value="">All Groups</option>
-    {agent_group_options}
-  </select>
-</div>
-<div class="table-wrap">{agent_util_html if agent_util_html else '<p style="padding:20px;color:#888;">No time tracking data for today.</p>'}</div>
-
 <h2>Overall Status</h2>
 <div class="kpi-row">
   <div class="kpi-card"><div class="label">Open Backlog</div><div class="value">{open_backlog}</div></div>
@@ -406,6 +397,15 @@ page_html = f"""<!DOCTYPE html>
   <input class="search-box" type="text" id="search" placeholder="Search..." onkeyup="filterTable()" style="margin:0;">
 </div>
 <div class="table-wrap">{raw_tickets_html}</div>
+
+<h2>Agent Utilization (Today)</h2>
+<div class="filter-row">
+  <select id="filterGroup" onchange="filterAgentTable()">
+    <option value="">All Groups</option>
+    {agent_group_options}
+  </select>
+</div>
+<div class="table-wrap">{agent_util_html if agent_util_html else '<p style="padding:20px;color:#888;">No time tracking data for today.</p>'}</div>
 
 </div><!-- end .main -->
 

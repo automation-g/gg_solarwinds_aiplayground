@@ -111,67 +111,6 @@ k2.metric("Closed", closed_today)
 k3.metric("Resolved", resolved_today)
 k4.metric("Still Open", f"{still_open_today}  ({overdue_today} overdue)" if overdue_today else still_open_today)
 
-# ── Agent Utilization (Today) ───────────────────────────────────────────────
-st.markdown("### Agent Utilization (Today)")
-with st.spinner("Fetching time tracks..."):
-    today_raw_list = [r for r in load_data.__wrapped__(start_str, end_str) if False] if False else []
-    # Re-fetch today's incidents from the raw API for time tracks
-    today_incidents_raw = fetch_incidents(
-        today.strftime("%Y-%m-%dT00:00:00Z"),
-        today.strftime("%Y-%m-%dT23:59:59Z"),
-    )
-    today_detailed = fetch_incidents_with_details(today_incidents_raw)
-    time_tracks = fetch_time_tracks(today_detailed)
-
-agent_util: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "entries": 0, "tickets_assigned": 0, "tasks": [], "group": ""})
-
-# Map agent to group from detailed incidents
-agent_group_map: dict[str, str] = {}
-for d in today_detailed:
-    assignee = safe_get(d, "assignee", "name")
-    group = safe_get(d, "group_assignee", "name")
-    if assignee and group:
-        agent_group_map[assignee] = group
-
-for r in today_detailed:
-    assignee = safe_get(r, "assignee", "name")
-    if assignee:
-        agent_util[assignee]["tickets_assigned"] += 1
-        agent_util[assignee]["group"] = agent_group_map.get(assignee, "")
-
-for tt in time_tracks:
-    creator = tt.get("creator", {}).get("name", "Unknown")
-    mins = tt.get("minutes", 0)
-    task_name = tt.get("name", "")
-    agent_util[creator]["minutes"] += mins
-    agent_util[creator]["entries"] += 1
-    agent_util[creator]["tasks"].append(f"{task_name} ({mins}m)")
-    if not agent_util[creator]["group"]:
-        agent_util[creator]["group"] = agent_group_map.get(creator, "")
-
-agent_rows = []
-for agent, data in sorted(agent_util.items(), key=lambda x: -x[1]["minutes"]):
-    total_mins = data["minutes"]
-    hrs = total_mins // 60
-    mins_rem = total_mins % 60
-    agent_rows.append({
-        "Group": data["group"],
-        "Agent": agent,
-        "Tickets Assigned": data["tickets_assigned"],
-        "Time Logged": f"{hrs}h {mins_rem}m" if total_mins > 0 else "-",
-        "Entries": data["entries"],
-    })
-
-if agent_rows:
-    agent_df = pd.DataFrame(agent_rows)
-    groups_list = ["All"] + sorted(agent_df["Group"].dropna().unique().tolist())
-    sel_group = st.selectbox("Group", groups_list, key="agent_group_filter")
-    if sel_group != "All":
-        agent_df = agent_df[agent_df["Group"] == sel_group]
-    st.dataframe(agent_df, use_container_width=True, hide_index=True)
-else:
-    st.info("No time tracking data for today.")
-
 st.markdown("### Overall Status")
 r1, r2, r3 = st.columns(3)
 r1.metric("Open Backlog", open_backlog)
@@ -368,3 +307,61 @@ st.download_button(
     file_name=f"tickets_{start_date}_{end_date}.csv",
     mime="text/csv",
 )
+
+st.divider()
+
+# ── Agent Utilization (Today) ───────────────────────────────────────────────
+st.markdown("### Agent Utilization (Today)")
+with st.spinner("Fetching time tracks..."):
+    today_incidents_raw = fetch_incidents(
+        today.strftime("%Y-%m-%dT00:00:00Z"),
+        today.strftime("%Y-%m-%dT23:59:59Z"),
+    )
+    today_detailed = fetch_incidents_with_details(today_incidents_raw)
+    time_tracks = fetch_time_tracks(today_detailed)
+
+agent_util: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "entries": 0, "tickets_assigned": 0, "group": ""})
+
+agent_group_map: dict[str, str] = {}
+for d in today_detailed:
+    assignee = safe_get(d, "assignee", "name")
+    group = safe_get(d, "group_assignee", "name")
+    if assignee and group:
+        agent_group_map[assignee] = group
+
+for r in today_detailed:
+    assignee = safe_get(r, "assignee", "name")
+    if assignee:
+        agent_util[assignee]["tickets_assigned"] += 1
+        agent_util[assignee]["group"] = agent_group_map.get(assignee, "")
+
+for tt in time_tracks:
+    creator = tt.get("creator", {}).get("name", "Unknown")
+    mins = tt.get("minutes", 0)
+    agent_util[creator]["minutes"] += mins
+    agent_util[creator]["entries"] += 1
+    if not agent_util[creator]["group"]:
+        agent_util[creator]["group"] = agent_group_map.get(creator, "")
+
+agent_rows = []
+for agent, data in sorted(agent_util.items(), key=lambda x: -x[1]["minutes"]):
+    total_mins = data["minutes"]
+    hrs = total_mins // 60
+    mins_rem = total_mins % 60
+    agent_rows.append({
+        "Group": data["group"],
+        "Agent": agent,
+        "Tickets Assigned": data["tickets_assigned"],
+        "Time Logged": f"{hrs}h {mins_rem}m" if total_mins > 0 else "-",
+        "Entries": data["entries"],
+    })
+
+if agent_rows:
+    agent_df = pd.DataFrame(agent_rows)
+    groups_list = ["All"] + sorted(agent_df["Group"].dropna().unique().tolist())
+    sel_group = st.selectbox("Group", groups_list, key="agent_group_filter")
+    if sel_group != "All":
+        agent_df = agent_df[agent_df["Group"] == sel_group]
+    st.dataframe(agent_df, use_container_width=True, hide_index=True)
+else:
+    st.info("No time tracking data for today.")
