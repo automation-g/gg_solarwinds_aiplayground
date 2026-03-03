@@ -160,7 +160,6 @@ for agent, data in sorted(agent_util.items(), key=lambda x: -x[1]["minutes"]):
         "Tickets Assigned": data["tickets_assigned"],
         "Time Logged": f"{hrs}h {mins_rem}m" if total_mins > 0 else "-",
         "Entries": data["entries"],
-        "Tasks": ", ".join(data["tasks"][:5]) if data["tasks"] else "-",
     })
 
 if agent_rows:

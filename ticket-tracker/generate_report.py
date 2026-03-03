@@ -100,7 +100,6 @@ for agent, data in sorted(agent_util.items(), key=lambda x: -x[1]["minutes"]):
         "Tickets Assigned": data["tickets_assigned"],
         "Time Logged": f"{hrs}h {mins}m" if total_mins > 0 else "-",
         "Entries": data["entries"],
-        "Tasks": ", ".join(data["tasks"][:5]) if data["tasks"] else "-",
     })
 agent_util_df = pd.DataFrame(agent_rows) if agent_rows else pd.DataFrame()
 agent_util_html = agent_util_df.to_html(index=False, classes="data-table", table_id="agent-util") if not agent_util_df.empty else ""
