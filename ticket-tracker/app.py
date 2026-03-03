@@ -10,7 +10,7 @@ import streamlit as st
 
 from collections import defaultdict
 
-from api_client import fetch_incidents, fetch_incidents_with_details, fetch_time_tracks, safe_get
+from api_client import fetch_incidents, fetch_incidents_with_details, fetch_time_tracks, fetch_agent_groups, safe_get
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="IT Ticket Tracker", layout="wide")
@@ -323,12 +323,8 @@ with st.spinner("Fetching time tracks..."):
 
 agent_util: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "entries": 0, "tickets_assigned": 0, "group": ""})
 
-agent_group_map: dict[str, str] = {}
-for d in today_detailed:
-    assignee = safe_get(d, "assignee", "name")
-    group = safe_get(d, "group_assignee", "name")
-    if assignee and group:
-        agent_group_map[assignee] = group
+# Map agent to their team group (from groups API)
+agent_group_map = fetch_agent_groups()
 
 for r in today_detailed:
     assignee = safe_get(r, "assignee", "name")

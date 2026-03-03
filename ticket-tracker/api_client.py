@@ -130,6 +130,19 @@ def fetch_incidents_with_details(incidents: list[dict[str, Any]], max_workers: i
     return results
 
 
+def fetch_agent_groups() -> dict[str, str]:
+    """Fetch all groups and return a mapping of agent name -> group name."""
+    groups = _get_paginated("/groups.json", {"per_page": 100})
+    agent_to_group: dict[str, str] = {}
+    for g in groups:
+        gname = g.get("name", "")
+        for m in g.get("memberships", []):
+            user = m.get("user", "")
+            if user:
+                agent_to_group[user] = gname
+    return agent_to_group
+
+
 def safe_get(d: dict, *keys: str, default: str = "") -> str:
     """Safely navigate nested dicts."""
     current = d

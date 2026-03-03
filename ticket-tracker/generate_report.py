@@ -12,7 +12,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.io as pio
 
-from api_client import fetch_incidents, fetch_incidents_with_details, fetch_time_tracks, safe_get
+from api_client import fetch_incidents, fetch_incidents_with_details, fetch_time_tracks, fetch_agent_groups, safe_get
 
 # ── Fetch data ───────────────────────────────────────────────────────────────
 today = datetime.date.today()
@@ -64,13 +64,10 @@ print(f"Got {len(time_tracks)} time track entries")
 from collections import defaultdict
 agent_util: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "entries": 0, "tickets_assigned": 0, "tasks": [], "group": ""})
 
-# Map agent to group from detailed incidents
-agent_group_map: dict[str, str] = {}
-for d in today_detailed:
-    assignee = safe_get(d, "assignee", "name")
-    group = safe_get(d, "group_assignee", "name")
-    if assignee and group:
-        agent_group_map[assignee] = group
+# Map agent to their team group (from groups API, not ticket assignment)
+print("Fetching agent group memberships...")
+agent_group_map = fetch_agent_groups()
+print(f"Mapped {len(agent_group_map)} agents to groups")
 
 # Count tickets assigned per agent (today)
 for r in today_detailed:
