@@ -364,5 +364,13 @@ if agent_rows:
     if sel_groups:
         agent_df = agent_df[agent_df["Group"].isin(sel_groups)]
     st.dataframe(agent_df, use_container_width=True, hide_index=True)
+    agent_csv = agent_df.to_csv(index=False)
+    st.download_button(
+        label="Export CSV",
+        data=agent_csv,
+        file_name=f"agent_utilization_{today}.csv",
+        mime="text/csv",
+        key="agent_csv_download",
+    )
 else:
     st.info("No time tracking data for today.")

@@ -104,6 +104,12 @@ for agent, data in sorted(agent_util.items(), key=lambda x: -x[1]["minutes"]):
 agent_util_df = pd.DataFrame(agent_rows) if agent_rows else pd.DataFrame()
 agent_util_html = agent_util_df.to_html(index=False, classes="data-table", table_id="agent-util") if not agent_util_df.empty else ""
 
+# Agent utilization CSV for download
+agent_csv_b64 = ""
+if not agent_util_df.empty:
+    agent_csv_data = agent_util_df.to_csv(index=False)
+    agent_csv_b64 = __import__("base64").b64encode(agent_csv_data.encode()).decode()
+
 # Group filter options
 agent_groups = sorted(set(r["Group"] for r in agent_rows if r["Group"])) if agent_rows else []
 agent_group_options = "\n".join(f'<option value="{g}">{g}</option>' for g in agent_groups)
@@ -400,6 +406,9 @@ page_html = f"""<!DOCTYPE html>
 <div class="table-wrap">{raw_tickets_html}</div>
 
 <h2>Agent Utilization (Today)</h2>
+<div style="margin-bottom:12px;">
+  <a class="content-btn" href="data:text/csv;base64,{agent_csv_b64}" download="agent_utilization_{today}.csv">Export CSV</a>
+</div>
 <div class="filter-row">
   <select id="filterGroup" multiple onchange="filterAgentTable()" style="min-width:300px;min-height:36px;padding:6px;">
     {agent_group_options}
