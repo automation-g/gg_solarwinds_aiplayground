@@ -229,13 +229,17 @@ if not all_agent_util_df.empty:
         chart_all_agent_group = pio.to_html(fig_all_group, **chart_opts)
 
 # ── Resolutions by Agent (today) ──────────────────────────────────────────────
-# Filter by resolved_at date being today (not updated_at)
+# SolarWinds API has no resolved_at field. Use customer_satisfaction_survey_sent_at
+# (set at resolution time) as the resolution timestamp, falling back to updated_at.
 resolved_today_list = []
-for r in updated_today_raw:
-    resolved_at = r.get("resolved_at", "") or ""
-    if isinstance(resolved_at, dict):
-        resolved_at = resolved_at.get("value", "") or ""
-    if today_str in str(resolved_at):
+for r in updated_detailed:
+    state_val = r.get("state", "")
+    if isinstance(state_val, dict):
+        state_val = state_val.get("name", "")
+    if str(state_val).strip().lower() not in ("resolved", "closed"):
+        continue
+    resolved_date = r.get("customer_satisfaction_survey_sent_at") or r.get("updated_at") or ""
+    if today_str in str(resolved_date):
         resolved_today_list.append(r)
 res_by_agent = defaultdict(int)
 for r in resolved_today_list:
