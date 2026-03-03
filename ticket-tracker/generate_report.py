@@ -251,8 +251,8 @@ for r in resolved_candidates:
         resolved_today_list.append(r)
 res_by_agent = defaultdict(int)
 for r in resolved_today_list:
-    assignee = safe_get(r, "assignee", "name") or "Unassigned"
-    res_by_agent[assignee] += 1
+    resolver = safe_get(r, "resolved_by", "name") or safe_get(r, "assignee", "name") or "Unassigned"
+    res_by_agent[resolver] += 1
 
 chart_resolution_agent = ""
 total_resolved_by_agent = sum(res_by_agent.values())
