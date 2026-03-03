@@ -52,6 +52,8 @@ df["Due"] = pd.to_datetime(df["Due"], errors="coerce", utc=True)
 df["Resolved At"] = pd.to_datetime(df["Resolved At"], errors="coerce", utc=True)
 df["Date"] = df["Created"].dt.date
 
+chart_opts = dict(full_html=False, include_plotlyjs=False)
+
 # ── Agent Time Tracking (today only) ────────────────────────────────────────
 print("Fetching time tracks for today's tickets...")
 today_raw = [r for r in raw if pd.to_datetime(r.get("created_at", ""), utc=True).date() == today]
@@ -170,7 +172,6 @@ overdue_all = int(((df["Due"].notna()) & (df["Due"] < now_utc) & (~df["State"].s
 still_open_label = f"{still_open_today} ({overdue_today} overdue)" if overdue_today else str(still_open_today)
 
 # ── Charts ───────────────────────────────────────────────────────────────────
-chart_opts = dict(full_html=False, include_plotlyjs=False)
 
 # Daily volume trend — fixed to last 5 days
 daily_counts = df.groupby("Date").size().reset_index(name="Tickets").sort_values("Date")
