@@ -130,6 +130,22 @@ def fetch_incidents_with_details(incidents: list[dict[str, Any]], max_workers: i
     return results
 
 
+def fetch_incidents_updated(updated_after: str, updated_before: str) -> list[dict[str, Any]]:
+    """Fetch all incidents updated in a date range, excluding Internal category."""
+    params: dict[str, Any] = {
+        "sort_by": "updated_at",
+        "sort_order": "DESC",
+        "updated[]": "Select Date Range",
+        "updated_custom_gte": updated_after,
+        "updated_custom_lte": updated_before,
+    }
+    records = _get_paginated("/incidents.json", params)
+    return [
+        r for r in records
+        if (r.get("category", {}) or {}).get("name", "").strip().lower() != "internal"
+    ]
+
+
 def fetch_agent_groups() -> dict[str, str]:
     """Fetch all groups and return a mapping of agent name -> group name."""
     groups = _get_paginated("/groups.json", {"per_page": 100})

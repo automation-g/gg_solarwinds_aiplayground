@@ -10,7 +10,7 @@ import streamlit as st
 
 from collections import defaultdict
 
-from api_client import fetch_incidents, fetch_incidents_with_details, fetch_time_tracks, fetch_agent_groups, safe_get
+from api_client import fetch_incidents, fetch_incidents_updated, fetch_incidents_with_details, fetch_time_tracks, fetch_agent_groups, safe_get
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="IT Ticket Tracker", layout="wide")
@@ -402,3 +402,82 @@ if agent_rows:
     )
 else:
     st.info("No time tracking data for today.")
+
+st.divider()
+
+# ── Agent Time Log (All Tickets) ────────────────────────────────────────────
+st.markdown("### Agent Time Log (All Tickets)")
+st.caption("Time entries logged today across all tickets, including older ones.")
+with st.spinner("Fetching time logs across all tickets..."):
+    updated_today_raw = fetch_incidents_updated(
+        today.strftime("%Y-%m-%dT00:00:00Z"),
+        today.strftime("%Y-%m-%dT23:59:59Z"),
+    )
+    updated_detailed = fetch_incidents_with_details(updated_today_raw)
+    all_time_tracks = fetch_time_tracks(updated_detailed)
+    today_str = today.strftime("%Y-%m-%d")
+    todays_logs = [t for t in all_time_tracks if t.get("created_at", "")[:10] == today_str]
+
+all_agent_util: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "entries": 0, "group": ""})
+for tt in todays_logs:
+    creator = tt.get("creator", {}).get("name", "Unknown")
+    mins_val = tt.get("minutes", 0)
+    all_agent_util[creator]["minutes"] += mins_val
+    all_agent_util[creator]["entries"] += 1
+    all_agent_util[creator]["group"] = agent_group_map.get(creator, "")
+
+all_agent_rows = []
+for agent, data in sorted(all_agent_util.items(), key=lambda x: -x[1]["minutes"]):
+    total_mins = data["minutes"]
+    hrs = total_mins // 60
+    mins_rem = total_mins % 60
+    all_agent_rows.append({
+        "Group": data["group"],
+        "Agent": agent,
+        "Time Logged": f"{hrs}h {mins_rem}m",
+        "Entries": data["entries"],
+    })
+
+if all_agent_rows:
+    all_agent_df = pd.DataFrame(all_agent_rows)
+
+    # Chart
+    all_group_time: dict[str, int] = defaultdict(int)
+    for _, row in all_agent_df.iterrows():
+        g = row["Group"] if row["Group"] else "Unassigned"
+        parts = row["Time Logged"].replace("h", "").replace("m", "").split()
+        mins_total = int(parts[0]) * 60 + int(parts[1]) if len(parts) == 2 else 0
+        all_group_time[g] += mins_total
+    all_group_chart_data = pd.DataFrame([
+        {"Group": g, "Hours": round(m / 60, 1)}
+        for g, m in sorted(all_group_time.items(), key=lambda x: -x[1])
+        if m > 0
+    ])
+    if not all_group_chart_data.empty:
+        fig_all_group = px.bar(
+            all_group_chart_data, x="Hours", y="Group", orientation="h",
+            title="Time Logged by Group (All Tickets)", text="Hours", color="Group",
+        )
+        fig_all_group.update_traces(textposition="outside")
+        fig_all_group.update_layout(
+            xaxis_title="Hours", yaxis_title="", showlegend=False,
+            margin=dict(t=40, b=20),
+            height=max(250, len(all_group_chart_data) * 50 + 80),
+        )
+        st.plotly_chart(fig_all_group, use_container_width=True)
+
+    all_groups_list = sorted([g for g in all_agent_df["Group"].dropna().unique().tolist() if g])
+    sel_all_groups = st.multiselect("Filter by Group", all_groups_list, key="all_agent_group_filter")
+    if sel_all_groups:
+        all_agent_df = all_agent_df[all_agent_df["Group"].isin(sel_all_groups)]
+    st.dataframe(all_agent_df, use_container_width=True, hide_index=True)
+    all_agent_csv = all_agent_df.to_csv(index=False)
+    st.download_button(
+        label="Export CSV",
+        data=all_agent_csv,
+        file_name=f"agent_time_log_{today}.csv",
+        mime="text/csv",
+        key="all_agent_csv_download",
+    )
+else:
+    st.info("No time log data for today.")

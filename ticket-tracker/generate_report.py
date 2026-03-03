@@ -12,7 +12,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.io as pio
 
-from api_client import fetch_incidents, fetch_incidents_with_details, fetch_time_tracks, fetch_agent_groups, safe_get
+from api_client import fetch_incidents, fetch_incidents_updated, fetch_incidents_with_details, fetch_time_tracks, fetch_agent_groups, safe_get
 
 # ── Fetch data ───────────────────────────────────────────────────────────────
 today = datetime.date.today()
@@ -149,6 +149,84 @@ if not agent_util_df.empty:
             yaxis=dict(fixedrange=True),
         )
         chart_agent_group = pio.to_html(fig_group, **chart_opts)
+
+# ── Agent Time Log (Today's logs across ALL tickets) ────────────────────────
+print("Fetching all incidents updated today for time logs...")
+updated_today_raw = fetch_incidents_updated(
+    today.strftime("%Y-%m-%dT00:00:00Z"),
+    today.strftime("%Y-%m-%dT23:59:59Z"),
+)
+print(f"Got {len(updated_today_raw)} incidents updated today")
+updated_detailed = fetch_incidents_with_details(updated_today_raw)
+all_time_tracks = fetch_time_tracks(updated_detailed)
+# Filter to only time entries logged today
+today_str = today.strftime("%Y-%m-%d")
+todays_logs = [t for t in all_time_tracks if t.get("created_at", "")[:10] == today_str]
+print(f"Time entries logged today (all tickets): {len(todays_logs)}")
+
+all_agent_util: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "entries": 0, "group": ""})
+for tt in todays_logs:
+    creator = tt.get("creator", {}).get("name", "Unknown")
+    mins = tt.get("minutes", 0)
+    all_agent_util[creator]["minutes"] += mins
+    all_agent_util[creator]["entries"] += 1
+    all_agent_util[creator]["group"] = agent_group_map.get(creator, "")
+
+all_agent_rows = []
+for agent, data in sorted(all_agent_util.items(), key=lambda x: -x[1]["minutes"]):
+    total_mins = data["minutes"]
+    hrs = total_mins // 60
+    mins_r = total_mins % 60
+    all_agent_rows.append({
+        "Group": data["group"],
+        "Agent": agent,
+        "Time Logged": f"{hrs}h {mins_r}m",
+        "Entries": data["entries"],
+    })
+all_agent_util_df = pd.DataFrame(all_agent_rows) if all_agent_rows else pd.DataFrame()
+all_agent_util_html = all_agent_util_df.to_html(index=False, classes="data-table", table_id="all-agent-util") if not all_agent_util_df.empty else ""
+
+# CSV for all agent time log
+all_agent_csv_b64 = ""
+if not all_agent_util_df.empty:
+    all_agent_csv_data = all_agent_util_df.to_csv(index=False)
+    all_agent_csv_b64 = __import__("base64").b64encode(all_agent_csv_data.encode()).decode()
+
+# Group filter options for all-tickets section
+all_agent_groups = sorted(set(r["Group"] for r in all_agent_rows if r["Group"])) if all_agent_rows else []
+all_agent_group_options = "\n".join(f'<option value="{g}">{g}</option>' for g in all_agent_groups)
+
+# Chart: Time logged per group (all tickets)
+chart_all_agent_group = ""
+if not all_agent_util_df.empty:
+    all_group_time = defaultdict(int)
+    for _, row in all_agent_util_df.iterrows():
+        g = row["Group"] if row["Group"] else "Unassigned"
+        tl = row["Time Logged"]
+        parts = tl.replace("h", "").replace("m", "").split()
+        mins_total = int(parts[0]) * 60 + int(parts[1]) if len(parts) == 2 else 0
+        all_group_time[g] += mins_total
+    all_group_chart_data = pd.DataFrame([
+        {"Group": g, "Hours": round(m / 60, 1)}
+        for g, m in sorted(all_group_time.items(), key=lambda x: -x[1])
+        if m > 0
+    ])
+    if not all_group_chart_data.empty:
+        fig_all_group = px.bar(
+            all_group_chart_data, x="Hours", y="Group", orientation="h",
+            title="Time Logged by Group (All Tickets)",
+            text="Hours", color="Group",
+        )
+        fig_all_group.update_traces(textposition="outside")
+        fig_all_group.update_layout(
+            xaxis_title="Hours", yaxis_title="",
+            showlegend=False,
+            margin=dict(t=40, b=20),
+            height=max(250, len(all_group_chart_data) * 50 + 80),
+            xaxis=dict(fixedrange=True),
+            yaxis=dict(fixedrange=True),
+        )
+        chart_all_agent_group = pio.to_html(fig_all_group, **chart_opts)
 
 # ── Metrics ──────────────────────────────────────────────────────────────────
 now_utc = pd.Timestamp.now(tz="UTC")
@@ -453,6 +531,20 @@ page_html = f"""<!DOCTYPE html>
 </div>
 <div class="table-wrap">{agent_util_html if agent_util_html else '<p style="padding:20px;color:#888;">No time tracking data for today.</p>'}</div>
 
+<h2>Agent Time Log (All Tickets)</h2>
+<p style="font-size:0.85rem;color:#666;margin-bottom:12px;">Time entries logged today across all tickets (including older ones).</p>
+{f'<div class="chart-full">{chart_all_agent_group}</div>' if chart_all_agent_group else ''}
+<div style="margin-bottom:12px;margin-top:12px;">
+  <a class="content-btn" href="data:text/csv;base64,{all_agent_csv_b64}" download="agent_time_log_{today}.csv">Export CSV</a>
+</div>
+<div class="filter-row">
+  <select id="filterAllGroup" multiple onchange="filterAllAgentTable()" style="min-width:300px;min-height:36px;padding:6px;">
+    {all_agent_group_options}
+  </select>
+  <span style="font-size:0.8rem;color:#888;align-self:center;">Hold Ctrl/Cmd to select multiple groups. No selection = All.</span>
+</div>
+<div class="table-wrap">{all_agent_util_html if all_agent_util_html else '<p style="padding:20px;color:#888;">No time log data for today.</p>'}</div>
+
 </div><!-- end .main -->
 
 <script>
@@ -514,6 +606,18 @@ function filterAgentTable() {{
   const sel = document.getElementById('filterGroup');
   const selected = Array.from(sel.selectedOptions).map(o => o.value);
   const rows = document.querySelectorAll('#agent-util tbody tr');
+  rows.forEach(row => {{
+    const cells = row.querySelectorAll('td');
+    const groupVal = cells[0] ? cells[0].textContent.trim() : '';
+    const matchGroup = selected.length === 0 || selected.includes(groupVal);
+    row.style.display = matchGroup ? '' : 'none';
+  }});
+}}
+
+function filterAllAgentTable() {{
+  const sel = document.getElementById('filterAllGroup');
+  const selected = Array.from(sel.selectedOptions).map(o => o.value);
+  const rows = document.querySelectorAll('#all-agent-util tbody tr');
   rows.forEach(row => {{
     const cells = row.querySelectorAll('td');
     const groupVal = cells[0] ? cells[0].textContent.trim() : '';
