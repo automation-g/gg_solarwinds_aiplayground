@@ -358,10 +358,10 @@ for agent, data in sorted(agent_util.items(), key=lambda x: -x[1]["minutes"]):
 
 if agent_rows:
     agent_df = pd.DataFrame(agent_rows)
-    groups_list = ["All"] + sorted(agent_df["Group"].dropna().unique().tolist())
-    sel_group = st.selectbox("Group", groups_list, key="agent_group_filter")
-    if sel_group != "All":
-        agent_df = agent_df[agent_df["Group"] == sel_group]
+    groups_list = sorted([g for g in agent_df["Group"].dropna().unique().tolist() if g])
+    sel_groups = st.multiselect("Filter by Group", groups_list, key="agent_group_filter")
+    if sel_groups:
+        agent_df = agent_df[agent_df["Group"].isin(sel_groups)]
     st.dataframe(agent_df, use_container_width=True, hide_index=True)
 else:
     st.info("No time tracking data for today.")

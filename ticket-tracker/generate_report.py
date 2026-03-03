@@ -400,10 +400,10 @@ page_html = f"""<!DOCTYPE html>
 
 <h2>Agent Utilization (Today)</h2>
 <div class="filter-row">
-  <select id="filterGroup" onchange="filterAgentTable()">
-    <option value="">All Groups</option>
+  <select id="filterGroup" multiple onchange="filterAgentTable()" style="min-width:300px;min-height:36px;padding:6px;">
     {agent_group_options}
   </select>
+  <span style="font-size:0.8rem;color:#888;align-self:center;">Hold Ctrl/Cmd to select multiple groups. No selection = All.</span>
 </div>
 <div class="table-wrap">{agent_util_html if agent_util_html else '<p style="padding:20px;color:#888;">No time tracking data for today.</p>'}</div>
 
@@ -465,11 +465,13 @@ async function triggerRefresh() {{
 }}
 
 function filterAgentTable() {{
-  const group = document.getElementById('filterGroup').value;
+  const sel = document.getElementById('filterGroup');
+  const selected = Array.from(sel.selectedOptions).map(o => o.value);
   const rows = document.querySelectorAll('#agent-util tbody tr');
   rows.forEach(row => {{
     const cells = row.querySelectorAll('td');
-    const matchGroup = !group || (cells[0] && cells[0].textContent.trim() === group);
+    const groupVal = cells[0] ? cells[0].textContent.trim() : '';
+    const matchGroup = selected.length === 0 || selected.includes(groupVal);
     row.style.display = matchGroup ? '' : 'none';
   }});
 }}
