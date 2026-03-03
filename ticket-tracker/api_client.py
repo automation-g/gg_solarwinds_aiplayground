@@ -175,7 +175,7 @@ def fetch_resolved_dates(incidents: list[dict[str, Any]], max_workers: int = 10)
             audits = resp.json()
             for audit in audits:
                 msg = audit.get("message", "")
-                if re.search(r"'State'.*changed.*to.*'(Resolved|Closed)'", msg, re.IGNORECASE):
+                if re.search(r"State.*changed.*to.*(?:Resolved|Closed)", msg, re.IGNORECASE):
                     return (inc_id, audit.get("created_at", ""))
         except Exception:
             pass
