@@ -229,13 +229,13 @@ if not all_agent_util_df.empty:
         chart_all_agent_group = pio.to_html(fig_all_group, **chart_opts)
 
 # ── Resolutions by Agent (today) ──────────────────────────────────────────────
-# Use updated_today_raw (already excludes Internal) and filter to resolved/closed
+# Filter by resolved_at date being today (not updated_at)
 resolved_today_list = []
 for r in updated_today_raw:
-    state_val = r.get("state", "")
-    if isinstance(state_val, dict):
-        state_val = state_val.get("name", "")
-    if str(state_val).strip().lower() in ("resolved", "closed"):
+    resolved_at = r.get("resolved_at", "") or ""
+    if isinstance(resolved_at, dict):
+        resolved_at = resolved_at.get("value", "") or ""
+    if today_str in str(resolved_at):
         resolved_today_list.append(r)
 res_by_agent = defaultdict(int)
 for r in resolved_today_list:
