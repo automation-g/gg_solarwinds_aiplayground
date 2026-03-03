@@ -60,13 +60,22 @@ time_tracks = fetch_time_tracks(today_detailed)
 print(f"Got {len(time_tracks)} time track entries")
 
 from collections import defaultdict
-agent_util: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "entries": 0, "tickets_assigned": 0, "tasks": []})
+agent_util: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "entries": 0, "tickets_assigned": 0, "tasks": [], "group": ""})
+
+# Map agent to group from detailed incidents
+agent_group_map: dict[str, str] = {}
+for d in today_detailed:
+    assignee = safe_get(d, "assignee", "name")
+    group = safe_get(d, "group_assignee", "name")
+    if assignee and group:
+        agent_group_map[assignee] = group
 
 # Count tickets assigned per agent (today)
-for r in today_raw:
+for r in today_detailed:
     assignee = safe_get(r, "assignee", "name")
     if assignee:
         agent_util[assignee]["tickets_assigned"] += 1
+        agent_util[assignee]["group"] = agent_group_map.get(assignee, "")
 
 # Aggregate time tracks
 for tt in time_tracks:
@@ -76,6 +85,8 @@ for tt in time_tracks:
     agent_util[creator]["minutes"] += mins
     agent_util[creator]["entries"] += 1
     agent_util[creator]["tasks"].append(f"{task_name} ({mins}m)")
+    if not agent_util[creator]["group"]:
+        agent_util[creator]["group"] = agent_group_map.get(creator, "")
 
 # Build agent utilization table
 agent_rows = []
@@ -84,6 +95,7 @@ for agent, data in sorted(agent_util.items(), key=lambda x: -x[1]["minutes"]):
     hrs = total_mins // 60
     mins = total_mins % 60
     agent_rows.append({
+        "Group": data["group"],
         "Agent": agent,
         "Tickets Assigned": data["tickets_assigned"],
         "Time Logged": f"{hrs}h {mins}m" if total_mins > 0 else "-",
@@ -91,7 +103,11 @@ for agent, data in sorted(agent_util.items(), key=lambda x: -x[1]["minutes"]):
         "Tasks": ", ".join(data["tasks"][:5]) if data["tasks"] else "-",
     })
 agent_util_df = pd.DataFrame(agent_rows) if agent_rows else pd.DataFrame()
-agent_util_html = agent_util_df.to_html(index=False, classes="data-table") if not agent_util_df.empty else ""
+agent_util_html = agent_util_df.to_html(index=False, classes="data-table", table_id="agent-util") if not agent_util_df.empty else ""
+
+# Group filter options
+agent_groups = sorted(set(r["Group"] for r in agent_rows if r["Group"])) if agent_rows else []
+agent_group_options = "\n".join(f'<option value="{g}">{g}</option>' for g in agent_groups)
 
 # ── Metrics ──────────────────────────────────────────────────────────────────
 now_utc = pd.Timestamp.now(tz="UTC")
@@ -335,6 +351,12 @@ page_html = f"""<!DOCTYPE html>
 </div>
 
 <h2>Agent Utilization (Today)</h2>
+<div class="filter-row">
+  <select id="filterGroup" onchange="filterAgentTable()">
+    <option value="">All Groups</option>
+    {agent_group_options}
+  </select>
+</div>
 <div class="table-wrap">{agent_util_html if agent_util_html else '<p style="padding:20px;color:#888;">No time tracking data for today.</p>'}</div>
 
 <h2>Overall Status</h2>
@@ -441,6 +463,16 @@ async function triggerRefresh() {{
     btn.textContent = 'Refresh with New Data';
     btn.disabled = false;
   }}
+}}
+
+function filterAgentTable() {{
+  const group = document.getElementById('filterGroup').value;
+  const rows = document.querySelectorAll('#agent-util tbody tr');
+  rows.forEach(row => {{
+    const cells = row.querySelectorAll('td');
+    const matchGroup = !group || (cells[0] && cells[0].textContent.trim() === group);
+    row.style.display = matchGroup ? '' : 'none';
+  }});
 }}
 
 function filterTable() {{
