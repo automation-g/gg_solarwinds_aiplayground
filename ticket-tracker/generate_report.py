@@ -230,10 +230,13 @@ if not all_agent_util_df.empty:
 
 # ── Resolutions by Agent (today) ──────────────────────────────────────────────
 # Use updated_today_raw (already excludes Internal) and filter to resolved/closed
-resolved_today_list = [
-    r for r in updated_today_raw
-    if safe_get(r, "state", "name").strip().lower() in ("resolved", "closed")
-]
+resolved_today_list = []
+for r in updated_today_raw:
+    state_val = r.get("state", "")
+    if isinstance(state_val, dict):
+        state_val = state_val.get("name", "")
+    if str(state_val).strip().lower() in ("resolved", "closed"):
+        resolved_today_list.append(r)
 res_by_agent = defaultdict(int)
 for r in resolved_today_list:
     assignee = safe_get(r, "assignee", "name") or "Unassigned"
