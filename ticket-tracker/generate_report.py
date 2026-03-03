@@ -73,16 +73,23 @@ still_open_label = f"{still_open_today} ({overdue_today} overdue)" if overdue_to
 # ── Charts ───────────────────────────────────────────────────────────────────
 chart_opts = dict(full_html=False, include_plotlyjs=False)
 
-# Daily volume trend — show all days, x-axis as date labels
+# Daily volume trend — fixed to last 5 days
 daily_counts = df.groupby("Date").size().reset_index(name="Tickets").sort_values("Date")
-daily_counts["Day"] = daily_counts["Date"].apply(lambda d: pd.Timestamp(d).strftime("%b %d\n%a"))
-fig_vol = px.bar(daily_counts, x="Day", y="Tickets", title="Daily Volume Trend", text="Tickets", color_discrete_sequence=["#636EFA"])
-fig_vol.update_traces(textposition="outside")
+# Ensure last 5 calendar days are present (fill missing days with 0)
+last_5_dates = [today - datetime.timedelta(days=i) for i in range(4, -1, -1)]
+last_5_df = pd.DataFrame({"Date": last_5_dates})
+last_5_df = last_5_df.merge(daily_counts, on="Date", how="left").fillna(0)
+last_5_df["Tickets"] = last_5_df["Tickets"].astype(int)
+last_5_df["Day"] = last_5_df["Date"].apply(lambda d: pd.Timestamp(d).strftime("%b %d (%a)"))
+fig_vol = px.bar(last_5_df, x="Day", y="Tickets", title="Daily Volume Trend (Last 5 Days)", text="Tickets", color_discrete_sequence=["#636EFA"])
+fig_vol.update_traces(textposition="outside", width=0.6)
 fig_vol.update_layout(
     xaxis_title="", yaxis_title="Tickets",
-    xaxis=dict(type="category", tickangle=0),
+    xaxis=dict(type="category", tickangle=0, fixedrange=True),
+    yaxis=dict(fixedrange=True),
     margin=dict(t=40, b=40),
     height=350,
+    dragmode=False,
 )
 chart_volume = pio.to_html(fig_vol, **chart_opts)
 

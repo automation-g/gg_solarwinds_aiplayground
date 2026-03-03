@@ -120,23 +120,28 @@ st.divider()
 # ── Charts ───────────────────────────────────────────────────────────────────
 c1, c2 = st.columns(2)
 
-# Daily volume trend — date labels on x-axis
-daily_counts = df.groupby("Date").size().reset_index(name="Tickets")
-daily_counts = daily_counts.sort_values("Date")
-daily_counts["Day"] = daily_counts["Date"].apply(lambda d: pd.Timestamp(d).strftime("%b %d\n%a"))
+# Daily volume trend — fixed to last 5 days
+daily_counts = df.groupby("Date").size().reset_index(name="Tickets").sort_values("Date")
+last_5_dates = [today - datetime.timedelta(days=i) for i in range(4, -1, -1)]
+last_5_df = pd.DataFrame({"Date": last_5_dates})
+last_5_df = last_5_df.merge(daily_counts, on="Date", how="left").fillna(0)
+last_5_df["Tickets"] = last_5_df["Tickets"].astype(int)
+last_5_df["Day"] = last_5_df["Date"].apply(lambda d: pd.Timestamp(d).strftime("%b %d (%a)"))
 fig_vol = px.bar(
-    daily_counts,
+    last_5_df,
     x="Day",
     y="Tickets",
-    title="Daily Volume Trend",
+    title="Daily Volume Trend (Last 5 Days)",
     text="Tickets",
     color_discrete_sequence=["#636EFA"],
 )
-fig_vol.update_traces(textposition="outside")
+fig_vol.update_traces(textposition="outside", width=0.6)
 fig_vol.update_layout(
     xaxis_title="", yaxis_title="Tickets",
-    xaxis=dict(type="category", tickangle=0),
+    xaxis=dict(type="category", tickangle=0, fixedrange=True),
+    yaxis=dict(fixedrange=True),
     margin=dict(t=40, b=40), height=350,
+    dragmode=False,
 )
 c1.plotly_chart(fig_vol, use_container_width=True)
 
