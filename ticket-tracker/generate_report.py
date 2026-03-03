@@ -114,6 +114,43 @@ if not agent_util_df.empty:
 agent_groups = sorted(set(r["Group"] for r in agent_rows if r["Group"])) if agent_rows else []
 agent_group_options = "\n".join(f'<option value="{g}">{g}</option>' for g in agent_groups)
 
+# Chart: Time logged per group
+chart_agent_group = ""
+if not agent_util_df.empty:
+    # Aggregate minutes per group (convert "Xh Ym" back to minutes for charting)
+    group_time = defaultdict(int)
+    group_tickets = defaultdict(int)
+    for _, row in agent_util_df.iterrows():
+        g = row["Group"] if row["Group"] else "Unassigned"
+        tl = row["Time Logged"]
+        if tl != "-":
+            parts = tl.replace("h", "").replace("m", "").split()
+            mins_total = int(parts[0]) * 60 + int(parts[1]) if len(parts) == 2 else 0
+            group_time[g] += mins_total
+        group_tickets[g] += row["Tickets Assigned"]
+    group_chart_data = pd.DataFrame([
+        {"Group": g, "Hours": round(m / 60, 1), "Tickets": group_tickets[g]}
+        for g, m in sorted(group_time.items(), key=lambda x: -x[1])
+        if m > 0
+    ])
+    if not group_chart_data.empty:
+        fig_group = px.bar(
+            group_chart_data, x="Hours", y="Group", orientation="h",
+            title="Time Logged by Group (Today)",
+            text="Hours", color="Group",
+            hover_data=["Tickets"],
+        )
+        fig_group.update_traces(textposition="outside")
+        fig_group.update_layout(
+            xaxis_title="Hours", yaxis_title="",
+            showlegend=False,
+            margin=dict(t=40, b=20),
+            height=max(250, len(group_chart_data) * 50 + 80),
+            xaxis=dict(fixedrange=True),
+            yaxis=dict(fixedrange=True),
+        )
+        chart_agent_group = pio.to_html(fig_group, **chart_opts)
+
 # ── Metrics ──────────────────────────────────────────────────────────────────
 now_utc = pd.Timestamp.now(tz="UTC")
 today_mask = df["Date"] == today
@@ -406,7 +443,8 @@ page_html = f"""<!DOCTYPE html>
 <div class="table-wrap">{raw_tickets_html}</div>
 
 <h2>Agent Utilization (Today)</h2>
-<div style="margin-bottom:12px;">
+{f'<div class="chart-full">{chart_agent_group}</div>' if chart_agent_group else ''}
+<div style="margin-bottom:12px;margin-top:12px;">
   <a class="content-btn" href="data:text/csv;base64,{agent_csv_b64}" download="agent_utilization_{today}.csv">Export CSV</a>
 </div>
 <div class="filter-row">

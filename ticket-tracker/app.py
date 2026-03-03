@@ -359,6 +359,38 @@ for agent, data in sorted(agent_util.items(), key=lambda x: -x[1]["minutes"]):
 
 if agent_rows:
     agent_df = pd.DataFrame(agent_rows)
+
+    # Chart: Time logged per group
+    group_time: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "tickets": 0})
+    for _, row in agent_df.iterrows():
+        g = row["Group"] if row["Group"] else "Unassigned"
+        tl = row["Time Logged"]
+        if tl != "-":
+            parts = tl.replace("h", "").replace("m", "").split()
+            mins_total = int(parts[0]) * 60 + int(parts[1]) if len(parts) == 2 else 0
+            group_time[g]["minutes"] += mins_total
+        group_time[g]["tickets"] += row["Tickets Assigned"]
+    group_chart_data = pd.DataFrame([
+        {"Group": g, "Hours": round(d["minutes"] / 60, 1), "Tickets": d["tickets"]}
+        for g, d in sorted(group_time.items(), key=lambda x: -x[1]["minutes"])
+        if d["minutes"] > 0
+    ])
+    if not group_chart_data.empty:
+        fig_group = px.bar(
+            group_chart_data, x="Hours", y="Group", orientation="h",
+            title="Time Logged by Group (Today)",
+            text="Hours", color="Group",
+            hover_data=["Tickets"],
+        )
+        fig_group.update_traces(textposition="outside")
+        fig_group.update_layout(
+            xaxis_title="Hours", yaxis_title="",
+            showlegend=False,
+            margin=dict(t=40, b=20),
+            height=max(250, len(group_chart_data) * 50 + 80),
+        )
+        st.plotly_chart(fig_group, use_container_width=True)
+
     groups_list = sorted([g for g in agent_df["Group"].dropna().unique().tolist() if g])
     sel_groups = st.multiselect("Filter by Group", groups_list, key="agent_group_filter")
     if sel_groups:
