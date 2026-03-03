@@ -138,11 +138,12 @@ last_5_df = last_5_df.merge(daily_counts, on="Date", how="left").fillna(0)
 last_5_df["Tickets"] = last_5_df["Tickets"].astype(int)
 last_5_df["Day"] = last_5_df["Date"].apply(lambda d: pd.Timestamp(d).strftime("%b %d (%a)"))
 fig_vol = px.bar(last_5_df, x="Day", y="Tickets", title="Daily Volume Trend (Last 5 Days)", text="Tickets", color_discrete_sequence=["#636EFA"])
+max_tickets = last_5_df["Tickets"].max()
 fig_vol.update_traces(textposition="outside", width=0.6)
 fig_vol.update_layout(
     xaxis_title="", yaxis_title="Tickets",
     xaxis=dict(type="category", tickangle=0, fixedrange=True),
-    yaxis=dict(fixedrange=True),
+    yaxis=dict(fixedrange=True, range=[0, max_tickets * 1.25]),
     margin=dict(t=40, b=40),
     height=350,
     dragmode=False,

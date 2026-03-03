@@ -137,11 +137,12 @@ fig_vol = px.bar(
     text="Tickets",
     color_discrete_sequence=["#636EFA"],
 )
+max_tickets = last_5_df["Tickets"].max()
 fig_vol.update_traces(textposition="outside", width=0.6)
 fig_vol.update_layout(
     xaxis_title="", yaxis_title="Tickets",
     xaxis=dict(type="category", tickangle=0, fixedrange=True),
-    yaxis=dict(fixedrange=True),
+    yaxis=dict(fixedrange=True, range=[0, max_tickets * 1.25]),
     margin=dict(t=40, b=40), height=350,
     dragmode=False,
 )
