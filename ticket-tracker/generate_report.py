@@ -268,16 +268,14 @@ if res_by_agent:
         color_continuous_scale=["#a0a7e8", "#636EFA", "#2d2d5e", "#1a1a2e"],
     )
     fig_res_agent.update_traces(textposition="outside")
-    res_agent_height = max(400, len(res_agent_df) * 30 + 100)
     fig_res_agent.update_layout(
         xaxis_title="Resolved Tickets", yaxis_title="",
         showlegend=False, coloraxis_showscale=False,
         margin=dict(l=150, t=40, r=30, b=30),
-        height=res_agent_height,
         xaxis=dict(fixedrange=True),
         yaxis=dict(fixedrange=True, automargin=True),
     )
-    chart_resolution_agent = pio.to_html(fig_res_agent, **chart_opts, default_height=f"{res_agent_height}px")
+    chart_resolution_agent = pio.to_html(fig_res_agent, **chart_opts, default_height="100%")
 
 # Chart: Resolutions by agent for today's tickets only (created AND resolved today)
 chart_resolution_today_only = ""
@@ -301,16 +299,14 @@ if res_today_only:
         color_continuous_scale=["#b8d4a8", "#00cc96", "#1a7a5c", "#0d4030"],
     )
     fig_res_today.update_traces(textposition="outside")
-    res_today_height = max(400, len(res_today_df) * 30 + 100)
     fig_res_today.update_layout(
         xaxis_title="Resolved Tickets", yaxis_title="",
         showlegend=False, coloraxis_showscale=False,
         margin=dict(l=150, t=40, r=30, b=30),
-        height=res_today_height,
         xaxis=dict(fixedrange=True),
         yaxis=dict(fixedrange=True, automargin=True),
     )
-    chart_resolution_today_only = pio.to_html(fig_res_today, **chart_opts, default_height=f"{res_today_height}px")
+    chart_resolution_today_only = pio.to_html(fig_res_today, **chart_opts, default_height="100%")
 
 # ── Metrics ──────────────────────────────────────────────────────────────────
 now_utc = pd.Timestamp.now(tz="UTC")
@@ -567,9 +563,9 @@ page_html = f"""<!DOCTYPE html>
 </div>
 
 <h2>Resolutions by Agent (Today)</h2>
-<div class="charts-row" style="align-items: flex-start;">
-  <div class="chart-box" style="min-width: 48%; flex: 1;">{chart_resolution_agent if chart_resolution_agent else '<p style="padding:20px;color:#888;">No resolved tickets today.</p>'}</div>
-  <div class="chart-box" style="min-width: 48%; flex: 1;">{chart_resolution_today_only if chart_resolution_today_only else '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>'}</div>
+<div class="charts-row" style="align-items: stretch;">
+  <div class="chart-box" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;">{chart_resolution_agent if chart_resolution_agent else '<p style="padding:20px;color:#888;">No resolved tickets today.</p>'}</div>
+  <div class="chart-box" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;">{chart_resolution_today_only if chart_resolution_today_only else '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>'}</div>
 </div>
 
 <h2>Subcategory Breakdown (Today)</h2>
