@@ -316,49 +316,12 @@ if res_today_only:
     chart_resolution_today_only = pio.to_html(fig_res_today, **chart_opts, default_height="100%")
 
 # ── Service Request vs Incident breakdown by agent (resolved/closed) ──────────
-# Today: from resolved_today_list
-svc_inc_today_rows = []
+# Overall: all resolved today (regardless of creation date)
+svc_inc_all_rows = []
 for r in resolved_today_list:
     assignee = safe_get(r, "assignee", "name") or "Unassigned"
     req_type = "Service Request" if r.get("is_service_request") else "Incident"
-    svc_inc_today_rows.append({"Agent": assignee, "Type": req_type})
-
-chart_svc_inc_today = ""
-if svc_inc_today_rows:
-    svc_inc_today_df = pd.DataFrame(svc_inc_today_rows)
-    svc_inc_today_agg = svc_inc_today_df.groupby(["Agent", "Type"]).size().reset_index(name="Count")
-    agent_order = svc_inc_today_agg.groupby("Agent")["Count"].sum().sort_values().index.tolist()
-    fig_svc_today = px.bar(
-        svc_inc_today_agg, x="Count", y="Agent", color="Type", orientation="h",
-        title=f"Resolved Today by Agent — SVC vs INC ({len(svc_inc_today_rows)} total)",
-        text="Count", barmode="stack",
-        color_discrete_map={"Service Request": "#636EFA", "Incident": "#EF553B"},
-        category_orders={"Agent": agent_order},
-    )
-    fig_svc_today.update_traces(textposition="inside")
-    fig_svc_today.update_layout(
-        xaxis_title="Tickets", yaxis_title="",
-        margin=dict(l=150, t=40, r=30, b=30),
-        height=max(350, len(agent_order) * 30 + 80),
-        xaxis=dict(fixedrange=True),
-        yaxis=dict(fixedrange=True, automargin=True),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-    )
-    chart_svc_inc_today = pio.to_html(fig_svc_today, **chart_opts)
-
-# Overall: all resolved/closed in the date range (excl. Internal) from updated_detailed
-svc_inc_all_rows = []
-for r in updated_detailed:
-    cat = safe_get(r, "category", "name") if isinstance(r.get("category"), dict) else str(r.get("category", ""))
-    if cat.strip().lower() == "internal":
-        continue
-    state_val = r.get("state", "")
-    if isinstance(state_val, dict):
-        state_val = state_val.get("name", "")
-    if str(state_val).strip().lower() in ("resolved", "closed"):
-        assignee = safe_get(r, "assignee", "name") or "Unassigned"
-        req_type = "Service Request" if r.get("is_service_request") else "Incident"
-        svc_inc_all_rows.append({"Agent": assignee, "Type": req_type})
+    svc_inc_all_rows.append({"Agent": assignee, "Type": req_type})
 
 chart_svc_inc_all = ""
 if svc_inc_all_rows:
@@ -367,7 +330,7 @@ if svc_inc_all_rows:
     agent_order_all = svc_inc_all_agg.groupby("Agent")["Count"].sum().sort_values().index.tolist()
     fig_svc_all = px.bar(
         svc_inc_all_agg, x="Count", y="Agent", color="Type", orientation="h",
-        title=f"All Resolved/Closed by Agent — SVC vs INC ({len(svc_inc_all_rows)} total)",
+        title=f"All Resolved Today — SVC vs INC ({len(svc_inc_all_rows)} total)",
         text="Count", barmode="stack",
         color_discrete_map={"Service Request": "#636EFA", "Incident": "#EF553B"},
         category_orders={"Agent": agent_order_all},
@@ -382,6 +345,38 @@ if svc_inc_all_rows:
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     chart_svc_inc_all = pio.to_html(fig_svc_all, **chart_opts)
+
+# Today's tickets only: created today AND resolved today
+svc_inc_created_today_rows = []
+for r in resolved_today_list:
+    created = r.get("created_at", "")
+    if today_str in str(created):
+        assignee = safe_get(r, "assignee", "name") or "Unassigned"
+        req_type = "Service Request" if r.get("is_service_request") else "Incident"
+        svc_inc_created_today_rows.append({"Agent": assignee, "Type": req_type})
+
+chart_svc_inc_created_today = ""
+if svc_inc_created_today_rows:
+    svc_inc_ct_df = pd.DataFrame(svc_inc_created_today_rows)
+    svc_inc_ct_agg = svc_inc_ct_df.groupby(["Agent", "Type"]).size().reset_index(name="Count")
+    agent_order_ct = svc_inc_ct_agg.groupby("Agent")["Count"].sum().sort_values().index.tolist()
+    fig_svc_ct = px.bar(
+        svc_inc_ct_agg, x="Count", y="Agent", color="Type", orientation="h",
+        title=f"Today's Tickets Resolved — SVC vs INC ({len(svc_inc_created_today_rows)} total)",
+        text="Count", barmode="stack",
+        color_discrete_map={"Service Request": "#636EFA", "Incident": "#EF553B"},
+        category_orders={"Agent": agent_order_ct},
+    )
+    fig_svc_ct.update_traces(textposition="inside")
+    fig_svc_ct.update_layout(
+        xaxis_title="Tickets", yaxis_title="",
+        margin=dict(l=150, t=40, r=30, b=30),
+        height=max(350, len(agent_order_ct) * 30 + 80),
+        xaxis=dict(fixedrange=True),
+        yaxis=dict(fixedrange=True, automargin=True),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    chart_svc_inc_created_today = pio.to_html(fig_svc_ct, **chart_opts)
 
 # ── Metrics ──────────────────────────────────────────────────────────────────
 now_utc = pd.Timestamp.now(tz="UTC")
@@ -654,9 +649,9 @@ page_html = f"""<!DOCTYPE html>
   <div class="chart-box" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;">{chart_resolution_today_only if chart_resolution_today_only else '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>'}</div>
 </div>
 
-<h2>Service Request vs Incident (Resolved/Closed)</h2>
-<div class="chart-full">{chart_svc_inc_today if chart_svc_inc_today else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
+<h2>Service Request vs Incident (Resolved Today)</h2>
 <div class="chart-full">{chart_svc_inc_all if chart_svc_inc_all else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
+<div class="chart-full">{chart_svc_inc_created_today if chart_svc_inc_created_today else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
 
 <h2>Subcategory Breakdown (Today)</h2>
 <div class="charts-row">
