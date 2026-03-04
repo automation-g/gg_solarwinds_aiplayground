@@ -344,7 +344,7 @@ if svc_inc_all_rows:
         yaxis=dict(fixedrange=True, automargin=True),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
-    chart_svc_inc_all = pio.to_html(fig_svc_all, **chart_opts)
+    chart_svc_inc_all = pio.to_html(fig_svc_all, **chart_opts, default_height="100%")
 
 # Today's tickets only: created today AND resolved today
 svc_inc_created_today_rows = []
@@ -376,7 +376,7 @@ if svc_inc_created_today_rows:
         yaxis=dict(fixedrange=True, automargin=True),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
-    chart_svc_inc_created_today = pio.to_html(fig_svc_ct, **chart_opts)
+    chart_svc_inc_created_today = pio.to_html(fig_svc_ct, **chart_opts, default_height="100%")
 
 # ── Metrics ──────────────────────────────────────────────────────────────────
 now_utc = pd.Timestamp.now(tz="UTC")
@@ -650,8 +650,10 @@ page_html = f"""<!DOCTYPE html>
 </div>
 
 <h2>Service Request vs Incident (Resolved Today)</h2>
-<div class="chart-full">{chart_svc_inc_all if chart_svc_inc_all else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
-<div class="chart-full">{chart_svc_inc_created_today if chart_svc_inc_created_today else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
+<div class="charts-row" style="align-items: stretch;">
+  <div class="chart-box" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;">{chart_svc_inc_all if chart_svc_inc_all else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
+  <div class="chart-box" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;">{chart_svc_inc_created_today if chart_svc_inc_created_today else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
+</div>
 
 <h2>Subcategory Breakdown (Today)</h2>
 <div class="charts-row">
