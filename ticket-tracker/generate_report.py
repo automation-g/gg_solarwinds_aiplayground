@@ -390,7 +390,7 @@ last_5_dates = [today - datetime.timedelta(days=i) for i in range(4, -1, -1)]
 last_5_df = pd.DataFrame({"Date": last_5_dates})
 last_5_df = last_5_df.merge(daily_counts, on="Date", how="left").fillna(0)
 last_5_df["Tickets"] = last_5_df["Tickets"].astype(int)
-last_5_df["Day"] = last_5_df["Date"].apply(lambda d: pd.Timestamp(d).strftime("%b %d (%a)"))
+last_5_df["Day"] = last_5_df["Date"].apply(lambda d: pd.Timestamp(d).strftime("%m/%d"))
 fig_vol = px.bar(last_5_df, x="Day", y="Tickets", title="Daily Volume Trend (Last 5 Days)", text="Tickets", color_discrete_sequence=["#636EFA"])
 max_tickets = last_5_df["Tickets"].max()
 fig_vol.update_traces(textposition="outside", width=0.6)
