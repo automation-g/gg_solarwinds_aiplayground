@@ -236,6 +236,10 @@ if not all_agent_util_df.empty:
 # from the audit trail (state change to Resolved/Closed).
 resolved_candidates = []
 for r in updated_detailed:
+    # Exclude Internal from resolution chart
+    cat = safe_get(r, "category", "name") if isinstance(r.get("category"), dict) else str(r.get("category", ""))
+    if cat.strip().lower() == "internal":
+        continue
     state_val = r.get("state", "")
     if isinstance(state_val, dict):
         state_val = state_val.get("name", "")
