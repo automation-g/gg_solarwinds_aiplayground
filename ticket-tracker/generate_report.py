@@ -352,7 +352,8 @@ chart_volume = pio.to_html(fig_vol, **chart_opts)
 # State distribution (today only)
 state_counts = df[df["Date"] == today]["State"].value_counts().reset_index()
 state_counts.columns = ["State", "Count"]
-fig_state = px.bar(state_counts, x="Count", y="State", orientation="h", title="State Distribution (Today)", color_discrete_sequence=["#EF553B"])
+fig_state = px.bar(state_counts, x="Count", y="State", orientation="h", title="State Distribution (Today)", text="Count", color_discrete_sequence=["#EF553B"])
+fig_state.update_traces(textposition="outside")
 fig_state.update_layout(xaxis_title="Tickets", yaxis_title="", margin=dict(t=40, b=20))
 chart_state = pio.to_html(fig_state, **chart_opts)
 
