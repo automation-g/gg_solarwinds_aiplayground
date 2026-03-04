@@ -332,7 +332,7 @@ if svc_inc_all_rows:
         svc_inc_all_agg, x="Count", y="Agent", color="Type", orientation="h",
         title=f"All Resolved Today — SVC vs INC ({len(svc_inc_all_rows)} total)",
         text="Count", barmode="stack",
-        color_discrete_map={"Service Request": "#636EFA", "Incident": "#EF553B"},
+        color_discrete_map={"Service Request": "#7B68EE", "Incident": "#DAA520"},
         category_orders={"Agent": agent_order_all},
     )
     fig_svc_all.update_traces(textposition="inside")
@@ -364,7 +364,7 @@ if svc_inc_created_today_rows:
         svc_inc_ct_agg, x="Count", y="Agent", color="Type", orientation="h",
         title=f"Today's Tickets Resolved — SVC vs INC ({len(svc_inc_created_today_rows)} total)",
         text="Count", barmode="stack",
-        color_discrete_map={"Service Request": "#636EFA", "Incident": "#EF553B"},
+        color_discrete_map={"Service Request": "#7B68EE", "Incident": "#DAA520"},
         category_orders={"Agent": agent_order_ct},
     )
     fig_svc_ct.update_traces(textposition="inside")
