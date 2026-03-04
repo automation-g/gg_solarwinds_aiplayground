@@ -335,7 +335,7 @@ if svc_inc_all_rows:
         color_discrete_map={"Service Request": "#7B68EE", "Incident": "#DAA520"},
         category_orders={"Agent": agent_order_all},
     )
-    fig_svc_all.update_traces(textposition="inside")
+    fig_svc_all.update_traces(textposition="inside", textfont_color="white")
     fig_svc_all.update_layout(
         xaxis_title="Tickets", yaxis_title="",
         margin=dict(l=150, t=40, r=30, b=30),
@@ -367,7 +367,7 @@ if svc_inc_created_today_rows:
         color_discrete_map={"Service Request": "#7B68EE", "Incident": "#DAA520"},
         category_orders={"Agent": agent_order_ct},
     )
-    fig_svc_ct.update_traces(textposition="inside")
+    fig_svc_ct.update_traces(textposition="inside", textfont_color="white")
     fig_svc_ct.update_layout(
         xaxis_title="Tickets", yaxis_title="",
         margin=dict(l=150, t=40, r=30, b=30),
