@@ -545,8 +545,18 @@ page_html = f"""<!DOCTYPE html>
 
   @media (max-width: 900px) {{
     .sidebar {{ position: relative; width: 100%; }}
-    .main {{ margin-left: 0; }}
+    .main {{ margin-left: 0; padding: 12px; }}
     body {{ flex-direction: column; }}
+    .charts-row {{ flex-direction: column; }}
+    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; height: auto !important; }}
+    .chart-full {{ width: 100%; }}
+    .kpi-row {{ flex-wrap: wrap; }}
+    .kpi-card {{ min-width: 45%; }}
+    .filter-row {{ flex-direction: column; }}
+    .filter-row select {{ width: 100%; min-width: auto; }}
+    .search-box {{ width: 100%; }}
+    .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
+    .data-table {{ min-width: 600px; }}
   }}
 </style>
 </head>
