@@ -327,7 +327,8 @@ chart_svc_inc_all = ""
 if svc_inc_all_rows:
     svc_inc_all_df = pd.DataFrame(svc_inc_all_rows)
     svc_inc_all_agg = svc_inc_all_df.groupby(["Agent", "Type"]).size().reset_index(name="Count")
-    agent_order_all = svc_inc_all_agg.groupby("Agent")["Count"].sum().sort_values().index.tolist()
+    agent_order_all = svc_inc_all_agg.groupby("Agent")["Count"].sum().sort_values(ascending=True).index.tolist()
+    agent_order_all.reverse()
     fig_svc_all = px.bar(
         svc_inc_all_agg, x="Count", y="Agent", color="Type", orientation="h",
         title=f"All Resolved Today — SVC vs INC ({len(svc_inc_all_rows)} total)",
@@ -359,7 +360,8 @@ chart_svc_inc_created_today = ""
 if svc_inc_created_today_rows:
     svc_inc_ct_df = pd.DataFrame(svc_inc_created_today_rows)
     svc_inc_ct_agg = svc_inc_ct_df.groupby(["Agent", "Type"]).size().reset_index(name="Count")
-    agent_order_ct = svc_inc_ct_agg.groupby("Agent")["Count"].sum().sort_values().index.tolist()
+    agent_order_ct = svc_inc_ct_agg.groupby("Agent")["Count"].sum().sort_values(ascending=True).index.tolist()
+    agent_order_ct.reverse()
     fig_svc_ct = px.bar(
         svc_inc_ct_agg, x="Count", y="Agent", color="Type", orientation="h",
         title=f"Today's Tickets Resolved — SVC vs INC ({len(svc_inc_created_today_rows)} total)",
