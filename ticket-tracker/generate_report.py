@@ -315,6 +315,54 @@ if res_today_only:
     )
     chart_resolution_today_only = pio.to_html(fig_res_today, **chart_opts, default_height="100%")
 
+# ── Service Request vs Incident breakdown (resolved/closed) ──────────────────
+# Today: from resolved_today_list
+svc_inc_today = {"Service Request": 0, "Incident": 0}
+for r in resolved_today_list:
+    if r.get("is_service_request"):
+        svc_inc_today["Service Request"] += 1
+    else:
+        svc_inc_today["Incident"] += 1
+
+chart_svc_inc_today = ""
+if any(svc_inc_today.values()):
+    svc_inc_today_df = pd.DataFrame(list(svc_inc_today.items()), columns=["Type", "Count"])
+    fig_svc_today = px.pie(
+        svc_inc_today_df, names="Type", values="Count",
+        title=f"Resolved Today — {sum(svc_inc_today.values())} total",
+        color="Type", color_discrete_map={"Service Request": "#636EFA", "Incident": "#EF553B"},
+    )
+    fig_svc_today.update_traces(textinfo="label+value+percent", textposition="inside")
+    fig_svc_today.update_layout(margin=dict(t=40, b=20), showlegend=False)
+    chart_svc_inc_today = pio.to_html(fig_svc_today, **chart_opts, default_height="100%")
+
+# Overall: all resolved/closed in the date range (excl. Internal) from updated_detailed
+svc_inc_all = {"Service Request": 0, "Incident": 0}
+for r in updated_detailed:
+    cat = safe_get(r, "category", "name") if isinstance(r.get("category"), dict) else str(r.get("category", ""))
+    if cat.strip().lower() == "internal":
+        continue
+    state_val = r.get("state", "")
+    if isinstance(state_val, dict):
+        state_val = state_val.get("name", "")
+    if str(state_val).strip().lower() in ("resolved", "closed"):
+        if r.get("is_service_request"):
+            svc_inc_all["Service Request"] += 1
+        else:
+            svc_inc_all["Incident"] += 1
+
+chart_svc_inc_all = ""
+if any(svc_inc_all.values()):
+    svc_inc_all_df = pd.DataFrame(list(svc_inc_all.items()), columns=["Type", "Count"])
+    fig_svc_all = px.pie(
+        svc_inc_all_df, names="Type", values="Count",
+        title=f"All Resolved/Closed — {sum(svc_inc_all.values())} total",
+        color="Type", color_discrete_map={"Service Request": "#636EFA", "Incident": "#EF553B"},
+    )
+    fig_svc_all.update_traces(textinfo="label+value+percent", textposition="inside")
+    fig_svc_all.update_layout(margin=dict(t=40, b=20), showlegend=False)
+    chart_svc_inc_all = pio.to_html(fig_svc_all, **chart_opts, default_height="100%")
+
 # ── Metrics ──────────────────────────────────────────────────────────────────
 now_utc = pd.Timestamp.now(tz="UTC")
 today_mask = df["Date"] == today
@@ -574,6 +622,12 @@ page_html = f"""<!DOCTYPE html>
 <div class="charts-row" style="align-items: stretch;">
   <div class="chart-box" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;">{chart_resolution_agent if chart_resolution_agent else '<p style="padding:20px;color:#888;">No resolved tickets today.</p>'}</div>
   <div class="chart-box" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;">{chart_resolution_today_only if chart_resolution_today_only else '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>'}</div>
+</div>
+
+<h2>Service Request vs Incident (Resolved/Closed)</h2>
+<div class="charts-row" style="align-items: stretch;">
+  <div class="chart-box" style="min-width: 48%; flex: 1; height: 350px;">{chart_svc_inc_today if chart_svc_inc_today else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
+  <div class="chart-box" style="min-width: 48%; flex: 1; height: 350px;">{chart_svc_inc_all if chart_svc_inc_all else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
 </div>
 
 <h2>Subcategory Breakdown (Today)</h2>
