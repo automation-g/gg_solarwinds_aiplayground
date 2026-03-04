@@ -58,8 +58,8 @@ def _get_paginated(path: str, params: dict[str, Any] | None = None) -> list[dict
     return all_records
 
 
-def fetch_incidents(created_after: str, created_before: str) -> list[dict[str, Any]]:
-    """Fetch all incidents in a date range, excluding Internal category."""
+def fetch_incidents(created_after: str, created_before: str, *, exclude_internal: bool = True) -> list[dict[str, Any]]:
+    """Fetch all incidents in a date range, optionally excluding Internal category."""
     params: dict[str, Any] = {
         "sort_by": "created_at",
         "sort_order": "DESC",
@@ -68,11 +68,12 @@ def fetch_incidents(created_after: str, created_before: str) -> list[dict[str, A
         "created_custom_lte": created_before,
     }
     records = _get_paginated("/incidents.json", params)
-    # Exclude Internal category tickets
-    return [
-        r for r in records
-        if (r.get("category", {}) or {}).get("name", "").strip().lower() != "internal"
-    ]
+    if exclude_internal:
+        return [
+            r for r in records
+            if (r.get("category", {}) or {}).get("name", "").strip().lower() != "internal"
+        ]
+    return records
 
 
 def fetch_time_tracks(incidents: list[dict[str, Any]], max_workers: int = 10) -> list[dict[str, Any]]:
@@ -130,8 +131,8 @@ def fetch_incidents_with_details(incidents: list[dict[str, Any]], max_workers: i
     return results
 
 
-def fetch_incidents_updated(updated_after: str, updated_before: str) -> list[dict[str, Any]]:
-    """Fetch all incidents updated in a date range, excluding Internal category."""
+def fetch_incidents_updated(updated_after: str, updated_before: str, *, exclude_internal: bool = True) -> list[dict[str, Any]]:
+    """Fetch all incidents updated in a date range, optionally excluding Internal category."""
     params: dict[str, Any] = {
         "sort_by": "updated_at",
         "sort_order": "DESC",
@@ -140,10 +141,12 @@ def fetch_incidents_updated(updated_after: str, updated_before: str) -> list[dic
         "updated_custom_lte": updated_before,
     }
     records = _get_paginated("/incidents.json", params)
-    return [
-        r for r in records
-        if (r.get("category", {}) or {}).get("name", "").strip().lower() != "internal"
-    ]
+    if exclude_internal:
+        return [
+            r for r in records
+            if (r.get("category", {}) or {}).get("name", "").strip().lower() != "internal"
+        ]
+    return records
 
 
 def fetch_agent_groups() -> dict[str, str]:

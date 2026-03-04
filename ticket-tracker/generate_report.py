@@ -54,9 +54,11 @@ df["Date"] = df["Created"].dt.date
 
 chart_opts = dict(full_html=False, include_plotlyjs=False)
 
-# ── Agent Time Tracking (today only) ────────────────────────────────────────
-print("Fetching time tracks for today's tickets...")
-today_raw = [r for r in raw if pd.to_datetime(r.get("created_at", ""), utc=True).date() == today]
+# ── Agent Time Tracking (today only, including Internal) ─────────────────────
+print("Fetching today's tickets (incl. Internal) for agent utilization...")
+raw_with_internal = fetch_incidents(start_str, end_str, exclude_internal=False)
+today_raw = [r for r in raw_with_internal if pd.to_datetime(r.get("created_at", ""), utc=True).date() == today]
+print(f"Got {len(today_raw)} tickets today (incl. Internal)")
 today_detailed = fetch_incidents_with_details(today_raw)
 time_tracks = fetch_time_tracks(today_detailed)
 print(f"Got {len(time_tracks)} time track entries")
@@ -150,13 +152,14 @@ if not agent_util_df.empty:
         )
         chart_agent_group = pio.to_html(fig_group, **chart_opts)
 
-# ── Agent Time Log (Today's logs across ALL tickets) ────────────────────────
-print("Fetching all incidents updated today for time logs...")
+# ── Agent Time Log (Today's logs across ALL tickets, incl. Internal) ─────────
+print("Fetching all incidents updated today (incl. Internal) for time logs...")
 updated_today_raw = fetch_incidents_updated(
     today.strftime("%Y-%m-%dT00:00:00Z"),
     today.strftime("%Y-%m-%dT23:59:59Z"),
+    exclude_internal=False,
 )
-print(f"Got {len(updated_today_raw)} incidents updated today")
+print(f"Got {len(updated_today_raw)} incidents updated today (incl. Internal)")
 updated_detailed = fetch_incidents_with_details(updated_today_raw)
 all_time_tracks = fetch_time_tracks(updated_detailed)
 # Filter to only time entries logged today
