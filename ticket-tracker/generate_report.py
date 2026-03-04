@@ -333,8 +333,8 @@ if any(svc_inc_today.values()):
         color="Type", color_discrete_map={"Service Request": "#636EFA", "Incident": "#EF553B"},
     )
     fig_svc_today.update_traces(textinfo="label+value+percent", textposition="inside")
-    fig_svc_today.update_layout(margin=dict(t=40, b=20), showlegend=False)
-    chart_svc_inc_today = pio.to_html(fig_svc_today, **chart_opts, default_height="100%")
+    fig_svc_today.update_layout(margin=dict(t=40, b=20), showlegend=False, height=320)
+    chart_svc_inc_today = pio.to_html(fig_svc_today, **chart_opts, default_height="320px")
 
 # Overall: all resolved/closed in the date range (excl. Internal) from updated_detailed
 svc_inc_all = {"Service Request": 0, "Incident": 0}
@@ -360,8 +360,8 @@ if any(svc_inc_all.values()):
         color="Type", color_discrete_map={"Service Request": "#636EFA", "Incident": "#EF553B"},
     )
     fig_svc_all.update_traces(textinfo="label+value+percent", textposition="inside")
-    fig_svc_all.update_layout(margin=dict(t=40, b=20), showlegend=False)
-    chart_svc_inc_all = pio.to_html(fig_svc_all, **chart_opts, default_height="100%")
+    fig_svc_all.update_layout(margin=dict(t=40, b=20), showlegend=False, height=320)
+    chart_svc_inc_all = pio.to_html(fig_svc_all, **chart_opts, default_height="320px")
 
 # ── Metrics ──────────────────────────────────────────────────────────────────
 now_utc = pd.Timestamp.now(tz="UTC")
@@ -635,9 +635,9 @@ page_html = f"""<!DOCTYPE html>
 </div>
 
 <h2>Service Request vs Incident (Resolved/Closed)</h2>
-<div class="charts-row" style="align-items: stretch;">
-  <div class="chart-box" style="min-width: 48%; flex: 1; height: 350px;">{chart_svc_inc_today if chart_svc_inc_today else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
-  <div class="chart-box" style="min-width: 48%; flex: 1; height: 350px;">{chart_svc_inc_all if chart_svc_inc_all else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
+<div class="charts-row">
+  <div class="chart-box">{chart_svc_inc_today if chart_svc_inc_today else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
+  <div class="chart-box">{chart_svc_inc_all if chart_svc_inc_all else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
 </div>
 
 <h2>Subcategory Breakdown (Today)</h2>
