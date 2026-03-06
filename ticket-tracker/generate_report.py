@@ -936,7 +936,7 @@ shift_html = f"""<!DOCTYPE html>
   .kpi-card .label {{ font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }}
   .kpi-card .value {{ font-size: 2rem; font-weight: 700; color: #1a1a2e; margin-top: 4px; }}
   .charts-row {{ display: flex; gap: 16px; flex-wrap: wrap; }}
-  .chart-box {{ background: #fff; border-radius: 10px; padding: 12px; flex: 1; min-width: 400px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; }}
+  .chart-box {{ background: #fff; border-radius: 10px; padding: 12px; flex: 1; min-width: 400px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }}
   .chart-full {{ background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-top: 16px; }}
   .subcat-table-scroll {{ height: 450px; overflow-y: auto; }}
   .subcat-chart {{ height: 450px; }}
@@ -955,9 +955,9 @@ shift_html = f"""<!DOCTYPE html>
     .sidebar {{ position: relative; width: 100%; padding: 16px; }}
     .main {{ margin-left: 0; padding: 12px; }}
     body {{ flex-direction: column; }}
-    .charts-row {{ flex-direction: column; gap: 12px; }}
-    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; height: 550px !important; overflow: hidden !important; }}
-    .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }}
+    .charts-row {{ flex-direction: column; }}
+    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; min-height: auto !important; height: auto !important; }}
+    .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; min-height: auto !important; }}
     .kpi-row {{ flex-wrap: wrap; gap: 10px; }}
     .kpi-card {{ min-width: 45%; flex: 1 1 45%; padding: 12px 8px; }}
     .kpi-card .value {{ font-size: 1.5rem; }}
@@ -968,8 +968,8 @@ shift_html = f"""<!DOCTYPE html>
     .search-box {{ width: 100%; }}
     .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
     .data-table {{ min-width: 600px; }}
-    .subcat-table-scroll {{ height: auto !important; max-height: 350px; overflow-y: auto !important; }}
-    .subcat-chart {{ height: 350px !important; }}
+    .subcat-table-scroll {{ height: auto; max-height: 350px; }}
+    .subcat-chart {{ height: 350px; }}
   }}
 
   @media (max-width: 480px) {{
@@ -1043,14 +1043,14 @@ shift_html = f"""<!DOCTYPE html>
 
 <h2>Resolutions by Agent (Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
-  <div class="chart-box" id="chartResAll" style="min-width: 48%; flex: 1; height: 550px;"></div>
-  <div class="chart-box" id="chartResToday" style="min-width: 48%; flex: 1; height: 550px;"></div>
+  <div class="chart-box" id="chartResAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
+  <div class="chart-box" id="chartResToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
 </div>
 
 <h2>Service Request vs Incident (Resolved/Closed Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
-  <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1; height: 550px;"></div>
-  <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; height: 550px;"></div>
+  <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
+  <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
 </div>
 
 <h2>Subcategory Breakdown (Today)</h2>
@@ -1060,6 +1060,9 @@ shift_html = f"""<!DOCTYPE html>
 </div>
 
 <h2>Raw Tickets</h2>
+<div style="margin-bottom:12px;">
+  <button class="content-btn" onclick="exportCSV()">Export CSV</button>
+</div>
 <div class="filter-row">
   <select id="filterState" onchange="filterRawTable()">
     <option value="">All States</option>
@@ -1070,14 +1073,20 @@ shift_html = f"""<!DOCTYPE html>
   <select id="filterCategory" onchange="filterRawTable()">
     <option value="">All Categories</option>
   </select>
+  <select id="filterSubcategory" onchange="filterRawTable()">
+    <option value="">All Subcategories</option>
+  </select>
   <input class="search-box" type="text" id="search" placeholder="Search..." onkeyup="filterRawTable()" style="margin:0;">
 </div>
 <div class="table-wrap" id="rawTable"></div>
 
 <h2>Agent Utilization (Today)</h2>
 <div class="chart-full" id="chartAgentGroup" style="min-height:300px;"></div>
-<div class="filter-row" style="margin-top:12px;">
-  <select id="filterGroup" multiple onchange="filterAgentTable()" style="min-width:200px;max-width:100%;min-height:36px;padding:6px;">
+<div style="margin-bottom:12px;margin-top:12px;">
+  <button class="content-btn" onclick="exportAgentCSV()">Export CSV</button>
+</div>
+<div class="filter-row">
+  <select id="filterGroup" multiple onchange="filterAgentTable()" style="min-width:300px;min-height:36px;padding:6px;">
   </select>
   <span style="font-size:0.8rem;color:#888;align-self:center;">Hold Ctrl/Cmd to select multiple groups. No selection = All.</span>
 </div>
@@ -1199,7 +1208,7 @@ function renderAll() {{
       title: 'State Distribution (Today)', margin: {{ l: 150, t: 40, r: 40, b: 20 }},
       xaxis: {{ title: 'Tickets', fixedrange: true }}, yaxis: {{ fixedrange: true, automargin: true }},
       height: 350, bargap: 0.15,
-    }}, {{ displayModeBar: false, responsive: true }});
+    }}, {{ displayModeBar: 'hover', responsive: true }});
   }} else {{
     stateEl.innerHTML = '<p style="padding:20px;color:#888;">No data for this time window.</p>';
   }}
@@ -1222,7 +1231,8 @@ function renderAll() {{
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
       showlegend: false, bargap: 0.15,
-    }}, {{ displayModeBar: false, responsive: true }});
+      height: Math.max(550, resAllSorted.length * 35 + 80),
+    }}, {{ displayModeBar: 'hover', responsive: true }});
   }} else {{
     resAllEl.innerHTML = '<p style="padding:20px;color:#888;">No resolved tickets in this time window.</p>';
   }}
@@ -1246,7 +1256,8 @@ function renderAll() {{
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
       showlegend: false, bargap: 0.15,
-    }}, {{ displayModeBar: false, responsive: true }});
+      height: Math.max(550, resTodaySorted.length * 35 + 80),
+    }}, {{ displayModeBar: 'hover', responsive: true }});
   }} else {{
     resTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>';
   }}
@@ -1269,9 +1280,10 @@ function renderAll() {{
     ], {{
       barmode:'stack', title:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)',
       margin:{{l:150,t:40,r:30,b:30}},
+      height: Math.max(550, svcAllAgents.length*30+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
-    }}, {{displayModeBar:false,responsive:true}});
+    }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     svcAllEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
@@ -1295,9 +1307,10 @@ function renderAll() {{
     ], {{
       barmode:'stack', title:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)',
       margin:{{l:150,t:40,r:30,b:30}},
+      height: Math.max(550, svcTodayAgents.length*30+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
-    }}, {{displayModeBar:false,responsive:true}});
+    }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     svcTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
@@ -1345,7 +1358,7 @@ function renderAll() {{
       textinfo:'label+percent entry', branchvalues:'total',
     }}], {{
       title:"Today's Category \\u2192 Subcategory", margin:{{t:40,b:20}}, height:450,
-    }}, {{displayModeBar:false,responsive:true}});
+    }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     sunEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
@@ -1384,7 +1397,7 @@ function renderAll() {{
       xaxis:{{fixedrange:true,title:'Hours'}},
       yaxis:{{fixedrange:true,automargin:true}},
       showlegend:false, bargap:0.15,
-    }}, {{displayModeBar:false,responsive:true}});
+    }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     agGroupEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data for this window.</p>';
   }}
@@ -1432,12 +1445,15 @@ function populateFilters(tickets) {{
   const states = [...new Set(tickets.map(t=>t.state).filter(Boolean))].sort();
   const priorities = [...new Set(tickets.map(t=>t.priority).filter(Boolean))].sort();
   const categories = [...new Set(tickets.map(t=>t.category).filter(Boolean))].sort();
+  const subcategories = [...new Set(tickets.map(t=>t.subcategory).filter(Boolean))].sort();
   const stateEl = document.getElementById('filterState');
   const prioEl = document.getElementById('filterPriority');
   const catEl = document.getElementById('filterCategory');
+  const subcatEl = document.getElementById('filterSubcategory');
   stateEl.innerHTML = '<option value="">All States</option>' + states.map(s=>'<option value="'+s+'">'+s+'</option>').join('');
   prioEl.innerHTML = '<option value="">All Priorities</option>' + priorities.map(p=>'<option value="'+p+'">'+p+'</option>').join('');
   catEl.innerHTML = '<option value="">All Categories</option>' + categories.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+  subcatEl.innerHTML = '<option value="">All Subcategories</option>' + subcategories.map(s=>'<option value="'+s+'">'+s+'</option>').join('');
 }}
 
 function filterAgentTable() {{
@@ -1456,16 +1472,49 @@ function filterRawTable() {{
   const state = document.getElementById('filterState').value;
   const priority = document.getElementById('filterPriority').value;
   const category = document.getElementById('filterCategory').value;
+  const subcategory = document.getElementById('filterSubcategory').value;
   const rows = document.querySelectorAll('#raw-tickets tbody tr');
   rows.forEach(row => {{
     const cells = row.querySelectorAll('td');
     const text = row.textContent.toLowerCase();
-    const ok = (!q || text.includes(q))
-      && (!state || (cells[2] && cells[2].textContent.trim() === state))
-      && (!priority || (cells[3] && cells[3].textContent.trim() === priority))
-      && (!category || (cells[4] && cells[4].textContent.trim() === category));
-    row.style.display = ok ? '' : 'none';
+    const matchSearch = !q || text.includes(q);
+    const matchState = !state || (cells[2] && cells[2].textContent.trim() === state);
+    const matchPriority = !priority || (cells[3] && cells[3].textContent.trim() === priority);
+    const matchCategory = !category || (cells[4] && cells[4].textContent.trim() === category);
+    const matchSubcategory = !subcategory || (cells[5] && cells[5].textContent.trim() === subcategory);
+    row.style.display = (matchSearch && matchState && matchPriority && matchCategory && matchSubcategory) ? '' : 'none';
   }});
+}}
+
+function exportCSV() {{
+  if (!currentTickets.length) return;
+  const headers = ['Ticket #','Name','State','Priority','Category','Subcategory','Assignee','Requester','Created (UAE)'];
+  const rows = currentTickets.map(t => [
+    t.number, '"'+(t.name||'').replace(/"/g,'""')+'"', t.state, t.priority,
+    t.category, t.subcategory, t.assignee, t.requester, fmtUaeTime(t.created_at)
+  ].join(','));
+  const csv = [headers.join(','), ...rows].join('\\n');
+  const blob = new Blob([csv], {{type:'text/csv'}});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'shift_tickets_' + DATA.today + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}}
+
+function exportAgentCSV() {{
+  const table = document.getElementById('agent-util-shift');
+  if (!table) return;
+  const rows = table.querySelectorAll('tr');
+  const csv = Array.from(rows).map(r =>
+    Array.from(r.querySelectorAll('th,td')).map(c => '"'+c.textContent.replace(/"/g,'""')+'"').join(',')
+  ).join('\\n');
+  const blob = new Blob([csv], {{type:'text/csv'}});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'shift_agent_utilization_' + DATA.today + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }}
 
 document.addEventListener('DOMContentLoaded', renderAll);
