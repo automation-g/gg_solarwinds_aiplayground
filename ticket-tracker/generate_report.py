@@ -1187,7 +1187,7 @@ function renderAll() {{
 
   // ── State Distribution ──
   const stateCounts = countBy(tickets, 'state');
-  const stateEntries = Object.entries(stateCounts).sort((a,b) => b[1] - a[1]);
+  const stateEntries = Object.entries(stateCounts).sort((a,b) => a[1] - b[1]);
   const stateEl = document.getElementById('chartState');
   if (stateEntries.length) {{
     Plotly.newPlot('chartState', [{{
@@ -1260,7 +1260,7 @@ function renderAll() {{
     if (!svcIncAll[a]) svcIncAll[a] = {{ svc: 0, inc: 0 }};
     r.is_service_request ? svcIncAll[a].svc++ : svcIncAll[a].inc++;
   }});
-  const svcAllAgents = Object.entries(svcIncAll).sort((a,b) => (b[1].svc+b[1].inc) - (a[1].svc+a[1].inc));
+  const svcAllAgents = Object.entries(svcIncAll).sort((a,b) => (a[1].svc+a[1].inc) - (b[1].svc+b[1].inc));
   const svcAllEl = document.getElementById('chartSvcAll');
   if (svcAllAgents.length) {{
     Plotly.newPlot('chartSvcAll', [
@@ -1286,7 +1286,7 @@ function renderAll() {{
     if (!svcIncToday[a]) svcIncToday[a] = {{ svc: 0, inc: 0 }};
     t.is_service_request ? svcIncToday[a].svc++ : svcIncToday[a].inc++;
   }});
-  const svcTodayAgents = Object.entries(svcIncToday).sort((a,b) => (b[1].svc+b[1].inc) - (a[1].svc+a[1].inc));
+  const svcTodayAgents = Object.entries(svcIncToday).sort((a,b) => (a[1].svc+a[1].inc) - (b[1].svc+b[1].inc));
   const svcTodayEl = document.getElementById('chartSvcToday');
   if (svcTodayAgents.length) {{
     Plotly.newPlot('chartSvcToday', [
