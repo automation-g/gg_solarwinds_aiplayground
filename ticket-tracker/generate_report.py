@@ -633,11 +633,11 @@ page_html = f"""<!DOCTYPE html>
   <div class="section-label">Time Window</div>
   <div class="info-box">
     <div class="label">Start</div>
-    <input type="time" id="timeStart" value="00:00" onchange="filterTable()" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(255,255,255,0.1);color:#fff;margin-top:4px;font-size:0.85rem;">
+    <input type="time" id="timeStart" value="00:00" oninput="filterTable()" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(255,255,255,0.1);color:#fff;margin-top:4px;font-size:0.85rem;">
   </div>
   <div class="info-box">
     <div class="label">End</div>
-    <input type="time" id="timeEnd" value="23:59" onchange="filterTable()" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(255,255,255,0.1);color:#fff;margin-top:4px;font-size:0.85rem;">
+    <input type="time" id="timeEnd" value="23:59" oninput="filterTable()" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(255,255,255,0.1);color:#fff;margin-top:4px;font-size:0.85rem;">
   </div>
   <button class="btn btn-outline" style="margin-top:6px;" onclick="document.getElementById('timeStart').value='00:00';document.getElementById('timeEnd').value='23:59';filterTable();">Reset to All Day</button>
 
@@ -1234,7 +1234,7 @@ function renderAll() {{
       title: 'State Distribution (Today)', margin: {{ l: 150, t: 40, r: 40, b: 20 }},
       xaxis: {{ title: 'Tickets', fixedrange: true }}, yaxis: {{ fixedrange: true, automargin: true }},
       height: 350, bargap: 0.15,
-    }}, {{ displayModeBar: 'hover', responsive: true }});
+    }}, {{ displayModeBar: 'hover' }});
   }} else {{
     stateEl.innerHTML = '<p style="padding:20px;color:#888;">No data for this time window.</p>';
   }}
@@ -1258,7 +1258,7 @@ function renderAll() {{
       yaxis: {{ fixedrange: true, automargin: true }},
       showlegend: false, bargap: 0.15,
       height: Math.max(550, resAllSorted.length * 35 + 80),
-    }}, {{ displayModeBar: 'hover', responsive: true }});
+    }}, {{ displayModeBar: 'hover' }});
   }} else {{
     resAllEl.innerHTML = '<p style="padding:20px;color:#888;">No resolved tickets in this time window.</p>';
   }}
@@ -1283,7 +1283,7 @@ function renderAll() {{
       yaxis: {{ fixedrange: true, automargin: true }},
       showlegend: false, bargap: 0.15,
       height: Math.max(550, resTodaySorted.length * 35 + 80),
-    }}, {{ displayModeBar: 'hover', responsive: true }});
+    }}, {{ displayModeBar: 'hover' }});
   }} else {{
     resTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>';
   }}
@@ -1309,7 +1309,7 @@ function renderAll() {{
       height: Math.max(550, svcAllAgents.length*30+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
-    }}, {{displayModeBar:'hover', responsive:true}});
+    }}, {{displayModeBar:'hover'}});
   }} else {{
     svcAllEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
@@ -1336,7 +1336,7 @@ function renderAll() {{
       height: Math.max(550, svcTodayAgents.length*30+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
-    }}, {{displayModeBar:'hover', responsive:true}});
+    }}, {{displayModeBar:'hover'}});
   }} else {{
     svcTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
@@ -1384,7 +1384,7 @@ function renderAll() {{
       textinfo:'label+percent entry', branchvalues:'total',
     }}], {{
       title:"Today's Category \\u2192 Subcategory", margin:{{t:40,b:20}}, height:450,
-    }}, {{displayModeBar:'hover', responsive:true}});
+    }}, {{displayModeBar:'hover'}});
   }} else {{
     sunEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
@@ -1423,7 +1423,7 @@ function renderAll() {{
       xaxis:{{fixedrange:true,title:'Hours'}},
       yaxis:{{fixedrange:true,automargin:true}},
       showlegend:false, bargap:0.15,
-    }}, {{displayModeBar:'hover', responsive:true}});
+    }}, {{displayModeBar:'hover'}});
   }} else {{
     agGroupEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data for this window.</p>';
   }}
