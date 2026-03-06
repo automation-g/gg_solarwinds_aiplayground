@@ -1133,25 +1133,26 @@ function renderAll() {{
   const tickets = DATA.tickets.filter(t => inWindow(t.created_at, w.startMins, w.endMins));
   currentTickets = tickets;
 
-  // Resolutions filtered by resolved_at in window
-  const resAll = DATA.resolutions.filter(r => inWindow(r.resolved_at, w.startMins, w.endMins));
-  const resToday = resAll.filter(r => r.created_at && r.created_at.includes(DATA.today));
-
-  // KPIs — Raised/Still Open based on creation time, Resolved/Closed based on resolution time
+  // KPIs — all based on tickets created in the window only
   const raised = tickets.length;
-  let kpiResolved = 0, kpiClosed = 0;
-  resAll.forEach(r => {{
-    if ((r.state||'').toLowerCase() === 'closed') kpiClosed++;
-    else kpiResolved++;
-  }});
+  const closed = tickets.filter(t => (t.state||'').toLowerCase() === 'closed').length;
+  const resolved = tickets.filter(t => (t.state||'').toLowerCase() === 'resolved').length;
   const stillOpen = tickets.filter(t => !['closed','resolved'].includes((t.state||'').toLowerCase())).length;
   document.getElementById('kpiRaised').textContent = raised;
-  document.getElementById('kpiClosed').textContent = kpiClosed;
-  document.getElementById('kpiResolved').textContent = kpiResolved;
+  document.getElementById('kpiClosed').textContent = closed;
+  document.getElementById('kpiResolved').textContent = resolved;
   document.getElementById('kpiOpen').textContent = stillOpen;
 
+  // Resolutions: only tickets created in the window that are resolved/closed
+  const ticketNumbers = new Set(tickets.map(t => t.number));
+  const resAll = DATA.resolutions.filter(r => inWindow(r.resolved_at, w.startMins, w.endMins));
+  // Filter to only tickets created in the window
+  const resInWindow = resAll.filter(r => inWindow(r.created_at, w.startMins, w.endMins));
+  // "Today's tickets" = created in window AND resolved in window (same set for shift)
+  const resToday = resInWindow;
+
   document.getElementById('sidebarTickets').textContent = raised;
-  document.getElementById('sidebarResolved').textContent = resAll.length;
+  document.getElementById('sidebarResolved').textContent = resInWindow.length;
 
   // ── State Distribution ──
   const stateCounts = countBy(tickets, 'state');
@@ -1172,9 +1173,9 @@ function renderAll() {{
     stateEl.innerHTML = '<p style="padding:20px;color:#888;">No data for this time window.</p>';
   }}
 
-  // ── Resolutions by Agent — All ──
-  const resAllByAgent = countBy(resAll, 'assignee');
-  const resAllSorted = Object.entries(resAllByAgent).sort((a,b) => a[1] - b[1]); // low to high for horizontal
+  // ── Resolutions by Agent — All (created in window) ──
+  const resAllByAgent = countBy(resInWindow, 'assignee');
+  const resAllSorted = Object.entries(resAllByAgent).sort((a,b) => a[1] - b[1]);
   const resAllMax = Math.max(...resAllSorted.map(e => e[1]), 1);
   const resAllEl = document.getElementById('chartResAll');
   if (resAllSorted.length) {{
@@ -1185,7 +1186,7 @@ function renderAll() {{
       marker: {{ color: resAllSorted.map(e => gradientColor(e[1], resAllMax, BLUE_SCALE)) }},
       showlegend: false,
     }}], {{
-      title: 'All Resolved/Closed Today \\u2014 ' + resAll.length,
+      title: 'All Resolved/Closed Today \\u2014 ' + resInWindow.length,
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
@@ -1218,9 +1219,9 @@ function renderAll() {{
     resTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>';
   }}
 
-  // ── SVC vs INC — All resolved ──
+  // ── SVC vs INC — All resolved (created in window) ──
   const svcIncAll = {{}};
-  resAll.forEach(r => {{
+  resInWindow.forEach(r => {{
     const a = r.assignee || 'Unassigned';
     if (!svcIncAll[a]) svcIncAll[a] = {{ svc: 0, inc: 0 }};
     r.is_service_request ? svcIncAll[a].svc++ : svcIncAll[a].inc++;
@@ -1234,7 +1235,7 @@ function renderAll() {{
       {{ type:'bar', orientation:'h', y: svcAllAgents.map(e=>e[0]), x: svcAllAgents.map(e=>e[1].inc),
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
-      barmode:'stack', title:'All Resolved/Closed Today \\u2014 SVC vs INC ('+resAll.length+' total)',
+      barmode:'stack', title:'All Resolved/Closed Today \\u2014 SVC vs INC ('+resInWindow.length+' total)',
       margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcAllAgents.length*40+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
