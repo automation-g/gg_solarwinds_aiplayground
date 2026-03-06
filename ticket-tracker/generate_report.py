@@ -1200,8 +1200,9 @@ function renderAll() {{
     resAllEl.innerHTML = '<p style="padding:20px;color:#888;">No resolved tickets in this time window.</p>';
   }}
 
-  // ── Resolutions by Agent — Today's tickets only ──
-  const resTodayByAgent = countBy(resToday, 'assignee');
+  // ── Resolutions by Agent — Today's tickets created in window (matches KPIs) ──
+  const ticketsResolved = tickets.filter(t => ['closed','resolved'].includes((t.state||'').toLowerCase()));
+  const resTodayByAgent = countBy(ticketsResolved, 'assignee');
   const resTodaySorted = Object.entries(resTodayByAgent).sort((a,b) => a[1] - b[1]);
   const resTodayMax = Math.max(...resTodaySorted.map(e => e[1]), 1);
   const resTodayEl = document.getElementById('chartResToday');
@@ -1213,7 +1214,7 @@ function renderAll() {{
       marker: {{ color: resTodaySorted.map(e => gradientColor(e[1], resTodayMax, GREEN_SCALE)) }},
       showlegend: false,
     }}], {{
-      title: "Today's Tickets Resolved/Closed \\u2014 " + resToday.length,
+      title: "Today's Tickets Resolved/Closed \\u2014 " + ticketsResolved.length,
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
@@ -1249,12 +1250,13 @@ function renderAll() {{
     svcAllEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
 
-  // ── SVC vs INC — Today's tickets only ──
+  // ── SVC vs INC — Today's tickets created in window (matches KPI counts) ──
+  const todayResolved = tickets.filter(t => ['closed','resolved'].includes((t.state||'').toLowerCase()));
   const svcIncToday = {{}};
-  resToday.forEach(r => {{
-    const a = r.assignee || 'Unassigned';
+  todayResolved.forEach(t => {{
+    const a = t.assignee || 'Unassigned';
     if (!svcIncToday[a]) svcIncToday[a] = {{ svc: 0, inc: 0 }};
-    r.is_service_request ? svcIncToday[a].svc++ : svcIncToday[a].inc++;
+    t.is_service_request ? svcIncToday[a].svc++ : svcIncToday[a].inc++;
   }});
   const svcTodayAgents = Object.entries(svcIncToday).sort((a,b) => (b[1].svc+b[1].inc) - (a[1].svc+a[1].inc));
   const svcTodayEl = document.getElementById('chartSvcToday');
@@ -1265,7 +1267,7 @@ function renderAll() {{
       {{ type:'bar', orientation:'h', y: svcTodayAgents.map(e=>e[0]), x: svcTodayAgents.map(e=>e[1].inc),
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
-      barmode:'stack', title:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+resToday.length+' total)',
+      barmode:'stack', title:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)',
       margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcTodayAgents.length*40+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
