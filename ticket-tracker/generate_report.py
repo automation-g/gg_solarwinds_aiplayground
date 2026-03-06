@@ -991,11 +991,11 @@ shift_html = f"""<!DOCTYPE html>
   <div class="section-label">Time Window (UAE)</div>
   <div class="info-box">
     <div class="label">Start Time</div>
-    <input type="time" id="shiftStart" value="14:15">
+    <input type="time" id="shiftStart" value="07:00">
   </div>
   <div class="info-box">
     <div class="label">End Time</div>
-    <input type="time" id="shiftEnd" value="20:30">
+    <input type="time" id="shiftEnd" value="14:00">
   </div>
 
   <button class="btn" onclick="renderAll()" style="background:#7B68EE;">Apply Time Filter</button>
