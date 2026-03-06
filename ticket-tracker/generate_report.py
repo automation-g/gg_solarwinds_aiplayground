@@ -566,7 +566,7 @@ page_html = f"""<!DOCTYPE html>
     body {{ flex-direction: column; }}
     .charts-row {{ flex-direction: column; }}
     .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; min-height: auto !important; height: auto !important; }}
-    .chart-full {{ width: 100%; }}
+    .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; min-height: auto !important; }}
     .kpi-row {{ flex-wrap: wrap; gap: 10px; }}
     .kpi-card {{ min-width: 45%; flex: 1 1 45%; padding: 12px 8px; }}
     .kpi-card .value {{ font-size: 1.5rem; }}
@@ -957,7 +957,7 @@ shift_html = f"""<!DOCTYPE html>
     body {{ flex-direction: column; }}
     .charts-row {{ flex-direction: column; }}
     .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; min-height: auto !important; height: auto !important; }}
-    .chart-full {{ width: 100%; }}
+    .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; min-height: auto !important; }}
     .kpi-row {{ flex-wrap: wrap; gap: 10px; }}
     .kpi-card {{ min-width: 45%; flex: 1 1 45%; padding: 12px 8px; }}
     .kpi-card .value {{ font-size: 1.5rem; }}
@@ -1075,9 +1075,9 @@ shift_html = f"""<!DOCTYPE html>
 <div class="table-wrap" id="rawTable"></div>
 
 <h2>Agent Utilization (Today)</h2>
-<div class="chart-full" id="chartAgentGroup"></div>
+<div class="chart-full" id="chartAgentGroup" style="min-height:300px;"></div>
 <div class="filter-row" style="margin-top:12px;">
-  <select id="filterGroup" multiple onchange="filterAgentTable()" style="min-width:300px;min-height:36px;padding:6px;">
+  <select id="filterGroup" multiple onchange="filterAgentTable()" style="min-width:200px;max-width:100%;min-height:36px;padding:6px;">
   </select>
   <span style="font-size:0.8rem;color:#888;align-self:center;">Hold Ctrl/Cmd to select multiple groups. No selection = All.</span>
 </div>
@@ -1372,18 +1372,22 @@ function renderAll() {{
     const g = d.group || 'Unassigned';
     groupTime[g] = (groupTime[g]||0) + d.minutes;
   }});
-  const groupEntries = Object.entries(groupTime).sort((a,b) => b[1]-a[1]).filter(e => e[1]>0);
+  const groupEntries = Object.entries(groupTime).sort((a,b) => a[1]-b[1]).filter(e => e[1]>0);
   const agGroupEl = document.getElementById('chartAgentGroup');
   if (groupEntries.length) {{
+    const colors = ['#636EFA','#EF553B','#00cc96','#ab63fa','#FFA15A','#19d3f3','#FF6692','#B6E880','#FF97FF','#FECB52'];
     Plotly.newPlot('chartAgentGroup', [{{
       type:'bar', orientation:'h',
       y: groupEntries.map(e=>e[0]), x: groupEntries.map(e=>+(e[1]/60).toFixed(1)),
-      text: groupEntries.map(e=>(e[1]/60).toFixed(1)), textposition:'outside',
-      marker:{{ color: groupEntries.map((_,i) => ['#636EFA','#EF553B','#00cc96','#ab63fa','#FFA15A','#19d3f3'][i%6]) }},
+      text: groupEntries.map(e=>(e[1]/60).toFixed(1)+'h'), textposition:'outside',
+      marker:{{ color: groupEntries.map((_,i) => colors[i%colors.length]) }},
     }}], {{
-      title:'Time Logged by Group (Today)', margin:{{l:150,t:40,r:40,b:20}},
-      height: Math.max(350, groupEntries.length*60+100),
-      xaxis:{{fixedrange:true,title:'Hours'}}, yaxis:{{fixedrange:true,automargin:true}}, showlegend:false, bargap:0.15,
+      title:'Time Logged by Group (Today)',
+      margin:{{t:40,b:20,l:10,r:40}},
+      height: Math.max(300, groupEntries.length*50+80),
+      xaxis:{{fixedrange:true,title:'Hours'}},
+      yaxis:{{fixedrange:true,automargin:true}},
+      showlegend:false, bargap:0.15,
     }}, {{displayModeBar:false,responsive:true}});
   }} else {{
     agGroupEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data for this window.</p>';
