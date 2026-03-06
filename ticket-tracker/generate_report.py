@@ -896,6 +896,7 @@ shift_html = f"""<!DOCTYPE html>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
   body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; color: #1a1a2e; display: flex; min-height: 100vh; }}
 
+  /* Sidebar */
   .sidebar {{ width: 260px; background: #1a1a2e; color: #fff; padding: 24px 16px; flex-shrink: 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; }}
   .sidebar h1 {{ font-size: 1.2rem; margin-bottom: 24px; color: #fff; }}
   .sidebar .section-label {{ font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #8888aa; margin: 20px 0 8px; }}
@@ -906,8 +907,10 @@ shift_html = f"""<!DOCTYPE html>
   .sidebar .btn:hover {{ background: #3561b0; }}
   .sidebar .btn-outline {{ background: transparent; border: 1px solid rgba(255,255,255,0.3); }}
   .sidebar .btn-outline:hover {{ background: rgba(255,255,255,0.1); }}
+  .sidebar .status-dot {{ display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4ade80; margin-right: 6px; }}
   .sidebar input[type="time"] {{ width: 100%; padding: 8px; border-radius: 6px; border: none; background: rgba(255,255,255,0.1); color: #fff; font-size: 0.9rem; margin-top: 4px; }}
 
+  /* Main content */
   .main {{ margin-left: 260px; padding: 24px; flex: 1; }}
   h2 {{ font-size: 1.2rem; margin: 24px 0 12px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 6px; }}
   .kpi-row {{ display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }}
@@ -917,12 +920,18 @@ shift_html = f"""<!DOCTYPE html>
   .charts-row {{ display: flex; gap: 16px; flex-wrap: wrap; }}
   .chart-box {{ background: #fff; border-radius: 10px; padding: 12px; flex: 1; min-width: 400px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }}
   .chart-full {{ background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-top: 16px; }}
+  .subcat-table-scroll {{ height: 450px; overflow-y: auto; }}
+  .subcat-chart {{ height: 450px; }}
   .data-table {{ width: 100%; border-collapse: collapse; font-size: 0.85rem; }}
   .data-table th {{ background: #1a1a2e; color: #fff; padding: 10px 12px; text-align: left; position: sticky; top: 0; }}
   .data-table td {{ padding: 8px 12px; border-bottom: 1px solid #e8e8e8; }}
   .data-table tr:hover td {{ background: #f0f4ff; }}
   .table-wrap {{ background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-top: 16px; max-height: 500px; overflow: auto; }}
-  .time-badge {{ display: inline-block; background: #7B68EE; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; }}
+  .content-btn {{ display: inline-block; padding: 10px 20px; background: #1a1a2e; color: #fff; border-radius: 6px; text-decoration: none; font-size: 0.85rem; margin-top: 10px; cursor: pointer; border: none; }}
+  .content-btn:hover {{ background: #2d2d5e; }}
+  .search-box {{ padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; width: 300px; margin-bottom: 10px; font-size: 0.85rem; }}
+  .filter-row {{ display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }}
+  .filter-row select {{ padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; min-width: 160px; }}
 
   @media (max-width: 900px) {{
     .sidebar {{ position: relative; width: 100%; }}
@@ -933,6 +942,9 @@ shift_html = f"""<!DOCTYPE html>
     .chart-full {{ width: 100%; }}
     .kpi-row {{ flex-wrap: wrap; }}
     .kpi-card {{ min-width: 45%; }}
+    .filter-row {{ flex-direction: column; }}
+    .filter-row select {{ width: 100%; min-width: auto; }}
+    .search-box {{ width: 100%; }}
     .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
     .data-table {{ min-width: 600px; }}
   }}
@@ -940,24 +952,25 @@ shift_html = f"""<!DOCTYPE html>
 </head>
 <body>
 
+<!-- Sidebar -->
 <div class="sidebar">
-  <h1>Shift Report</h1>
+  <h1>IT Ticket Tracker<br><small style="font-size:0.75rem;color:#8888aa;">Shift Report</small></h1>
 
   <div class="section-label">Time Window (UAE)</div>
   <div class="info-box">
     <div class="label">Start Time</div>
-    <input type="time" id="shiftStart" value="14:15" onchange="renderAll()">
+    <input type="time" id="shiftStart" value="14:15">
   </div>
   <div class="info-box">
     <div class="label">End Time</div>
-    <input type="time" id="shiftEnd" value="20:30" onchange="renderAll()">
+    <input type="time" id="shiftEnd" value="20:30">
   </div>
 
   <button class="btn" onclick="renderAll()" style="background:#7B68EE;">Apply Time Filter</button>
 
-  <div class="section-label">Report Date</div>
+  <div class="section-label">Data Status</div>
   <div class="info-box">
-    <div class="label">Date</div>
+    <div class="label"><span class="status-dot"></span>Report Date</div>
     <div class="value">{today}</div>
   </div>
   <div class="info-box">
@@ -965,14 +978,25 @@ shift_html = f"""<!DOCTYPE html>
     <div class="value">{generated_at}</div>
   </div>
 
+  <div class="section-label">Quick Stats</div>
+  <div class="info-box">
+    <div class="label">Tickets in Window</div>
+    <div class="value" id="sidebarTickets">-</div>
+  </div>
+  <div class="info-box">
+    <div class="label">Resolved in Window</div>
+    <div class="value" id="sidebarResolved">-</div>
+  </div>
+
   <div style="margin-top:20px;">
     <a class="btn btn-outline" href="index.html">Back to Full Report</a>
   </div>
 </div>
 
+<!-- Main Content -->
 <div class="main">
 
-<h2>Shift Summary <span id="timeBadge" class="time-badge"></span></h2>
+<h2>Today's Summary <span id="timeBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
 <div class="kpi-row">
   <div class="kpi-card"><div class="label">Raised</div><div class="value" id="kpiRaised">-</div></div>
   <div class="kpi-card"><div class="label">Closed</div><div class="value" id="kpiClosed">-</div></div>
@@ -980,71 +1004,92 @@ shift_html = f"""<!DOCTYPE html>
   <div class="kpi-card"><div class="label">Still Open</div><div class="value" id="kpiOpen">-</div></div>
 </div>
 
-<h2>State Distribution</h2>
+<h2>Charts</h2>
 <div class="charts-row">
-  <div class="chart-box" id="chartState" style="min-height:300px;"></div>
+  <div class="chart-box" id="chartState" style="min-height:350px;"></div>
 </div>
 
-<h2>Resolutions by Agent</h2>
+<h2>Resolutions by Agent (Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
-  <div class="chart-box" id="chartResAll" style="min-width:48%;flex:1;height:550px;overflow:auto;"></div>
-  <div class="chart-box" id="chartResToday" style="min-width:48%;flex:1;height:550px;overflow:auto;"></div>
+  <div class="chart-box" id="chartResAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
+  <div class="chart-box" id="chartResToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
 </div>
 
-<h2>Service Request vs Incident (Resolved)</h2>
+<h2>Service Request vs Incident (Resolved Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
-  <div class="chart-box" id="chartSvcAll" style="min-width:48%;flex:1;height:550px;overflow:auto;"></div>
-  <div class="chart-box" id="chartSvcToday" style="min-width:48%;flex:1;height:550px;overflow:auto;"></div>
+  <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
+  <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
 </div>
 
-<h2>Subcategory Breakdown</h2>
+<h2>Subcategory Breakdown (Today)</h2>
 <div class="charts-row">
-  <div class="chart-box" id="subcatTable" style="max-height:450px;overflow-y:auto;"></div>
-  <div class="chart-box" id="chartSunburst" style="height:450px;"></div>
+  <div class="chart-box subcat-table-scroll" id="subcatTable"></div>
+  <div class="chart-box subcat-chart" id="chartSunburst"></div>
 </div>
 
-<h2>Agent Time Log</h2>
+<h2>Raw Tickets</h2>
+<div class="filter-row">
+  <select id="filterState" onchange="filterRawTable()">
+    <option value="">All States</option>
+  </select>
+  <select id="filterPriority" onchange="filterRawTable()">
+    <option value="">All Priorities</option>
+  </select>
+  <select id="filterCategory" onchange="filterRawTable()">
+    <option value="">All Categories</option>
+  </select>
+  <input class="search-box" type="text" id="search" placeholder="Search..." onkeyup="filterRawTable()" style="margin:0;">
+</div>
+<div class="table-wrap" id="rawTable"></div>
+
+<h2>Agent Utilization (Today)</h2>
 <div class="chart-full" id="chartAgentGroup"></div>
 <div class="table-wrap" id="agentTable"></div>
 
-<h2>Raw Tickets</h2>
-<div class="table-wrap" id="rawTable"></div>
-
-</div>
+</div><!-- end .main -->
 
 <script>
 const DATA = {shift_json};
-const UAE_OFFSET = 4; // UTC+4
+const UAE_OFFSET_MS = 4 * 3600000; // UTC+4 in milliseconds
 
-function utcToUae(utcStr) {{
-  if (!utcStr) return null;
+function toUaeMinutes(utcStr) {{
+  if (!utcStr) return -1;
   const d = new Date(utcStr);
-  if (isNaN(d)) return null;
-  return new Date(d.getTime() + UAE_OFFSET * 3600000);
+  if (isNaN(d)) return -1;
+  // Add UAE offset and use UTC methods to get UAE hours/minutes
+  const uae = new Date(d.getTime() + UAE_OFFSET_MS);
+  return uae.getUTCHours() * 60 + uae.getUTCMinutes();
 }}
 
-function timeInWindow(utcStr, startH, startM, endH, endM) {{
-  const uae = utcToUae(utcStr);
-  if (!uae) return false;
-  const mins = uae.getHours() * 60 + uae.getMinutes();
-  const startMins = startH * 60 + startM;
-  const endMins = endH * 60 + endM;
-  return mins >= startMins && mins <= endMins;
+function fmtUaeTime(utcStr) {{
+  if (!utcStr) return '';
+  const d = new Date(utcStr);
+  if (isNaN(d)) return '';
+  const uae = new Date(d.getTime() + UAE_OFFSET_MS);
+  const y = uae.getUTCFullYear();
+  const mo = String(uae.getUTCMonth() + 1).padStart(2, '0');
+  const da = String(uae.getUTCDate()).padStart(2, '0');
+  const h = String(uae.getUTCHours()).padStart(2, '0');
+  const mi = String(uae.getUTCMinutes()).padStart(2, '0');
+  return y + '-' + mo + '-' + da + ' ' + h + ':' + mi;
 }}
 
-function getTimeWindow() {{
+function inWindow(utcStr, startMins, endMins) {{
+  const m = toUaeMinutes(utcStr);
+  return m >= 0 && m >= startMins && m <= endMins;
+}}
+
+function getWindow() {{
   const s = document.getElementById('shiftStart').value.split(':');
   const e = document.getElementById('shiftEnd').value.split(':');
-  return {{
-    sh: parseInt(s[0]), sm: parseInt(s[1]),
-    eh: parseInt(e[0]), em: parseInt(e[1]),
-  }};
+  const startMins = parseInt(s[0]) * 60 + parseInt(s[1]);
+  const endMins = parseInt(e[0]) * 60 + parseInt(e[1]);
+  return {{ startMins, endMins, startH: parseInt(s[0]), startM: parseInt(s[1]), endH: parseInt(e[0]), endM: parseInt(e[1]) }};
 }}
 
-function fmtTime(h, m) {{
+function fmtAmPm(h, m) {{
   const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+  return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + ' ' + ampm;
 }}
 
 function countBy(arr, key) {{
@@ -1053,217 +1098,315 @@ function countBy(arr, key) {{
   return m;
 }}
 
-function sortedEntries(obj, asc) {{
-  return Object.entries(obj).sort((a, b) => asc ? a[1] - b[1] : b[1] - a[1]);
+// Interpolate a gradient color scale (array of [position, hex])
+function gradientColor(val, maxVal, scale) {{
+  if (maxVal === 0) return scale[0][1];
+  const t = val / maxVal;
+  for (let i = 1; i < scale.length; i++) {{
+    if (t <= scale[i][0]) {{
+      const t0 = scale[i-1][0], t1 = scale[i][0];
+      const f = (t - t0) / (t1 - t0);
+      const c0 = scale[i-1][1], c1 = scale[i][1];
+      const r = Math.round(parseInt(c0.slice(1,3),16) * (1-f) + parseInt(c1.slice(1,3),16) * f);
+      const g = Math.round(parseInt(c0.slice(3,5),16) * (1-f) + parseInt(c1.slice(3,5),16) * f);
+      const b = Math.round(parseInt(c0.slice(5,7),16) * (1-f) + parseInt(c1.slice(5,7),16) * f);
+      return '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+    }}
+  }}
+  return scale[scale.length-1][1];
 }}
 
-function makeHBar(divId, labels, values, title, color, textColor) {{
-  const el = document.getElementById(divId);
-  if (!labels.length) {{ el.innerHTML = '<p style="padding:20px;color:#888;">No data for this time window.</p>'; return; }}
-  Plotly.newPlot(divId, [{{
-    type: 'bar', orientation: 'h', y: labels, x: values,
-    text: values.map(String), textposition: 'outside',
-    marker: {{ color: color || '#636EFA' }},
-    textfont: {{ color: textColor || undefined }},
-  }}], {{
-    title: title, margin: {{ l: 150, t: 40, r: 40, b: 30 }},
-    height: Math.max(350, labels.length * 30 + 80),
-    xaxis: {{ fixedrange: true, title: 'Tickets' }}, yaxis: {{ fixedrange: true, automargin: true }},
-  }}, {{ displayModeBar: false, responsive: true }});
-}}
+const BLUE_SCALE = [[0,'#a0a7e8'],[0.33,'#636EFA'],[0.66,'#2d2d5e'],[1,'#1a1a2e']];
+const GREEN_SCALE = [[0,'#b8d4a8'],[0.33,'#00cc96'],[0.66,'#1a7a5c'],[1,'#0d4030']];
 
-function makeStackedBar(divId, agents, svcCounts, incCounts, title) {{
-  const el = document.getElementById(divId);
-  if (!agents.length) {{ el.innerHTML = '<p style="padding:20px;color:#888;">No data for this time window.</p>'; return; }}
-  Plotly.newPlot(divId, [
-    {{ type: 'bar', orientation: 'h', y: agents, x: svcCounts, name: 'Service Request',
-       marker: {{ color: '#7B68EE' }}, text: svcCounts.map(v => v || ''), textposition: 'inside', textfont: {{ color: 'white' }} }},
-    {{ type: 'bar', orientation: 'h', y: agents, x: incCounts, name: 'Incident',
-       marker: {{ color: '#DAA520' }}, text: incCounts.map(v => v || ''), textposition: 'inside', textfont: {{ color: 'white' }} }},
-  ], {{
-    barmode: 'stack', title: title, margin: {{ l: 150, t: 40, r: 40, b: 30 }},
-    height: Math.max(350, agents.length * 30 + 80),
-    xaxis: {{ fixedrange: true, title: 'Tickets' }}, yaxis: {{ fixedrange: true, automargin: true }},
-    legend: {{ orientation: 'h', yanchor: 'bottom', y: 1.02, xanchor: 'right', x: 1 }},
-  }}, {{ displayModeBar: false, responsive: true }});
-}}
+let currentTickets = [];
 
 function renderAll() {{
-  const tw = getTimeWindow();
-  document.getElementById('timeBadge').textContent = fmtTime(tw.sh, tw.sm) + ' - ' + fmtTime(tw.eh, tw.em) + ' UAE';
+  const w = getWindow();
+  document.getElementById('timeBadge').textContent = fmtAmPm(w.startH, w.startM) + ' - ' + fmtAmPm(w.endH, w.endM) + ' UAE';
 
   // Filter tickets created in window
-  const tickets = DATA.tickets.filter(t => timeInWindow(t.created_at, tw.sh, tw.sm, tw.eh, tw.em));
+  const tickets = DATA.tickets.filter(t => inWindow(t.created_at, w.startMins, w.endMins));
+  currentTickets = tickets;
 
   // KPIs
   const raised = tickets.length;
-  const closed = tickets.filter(t => t.state && t.state.toLowerCase() === 'closed').length;
-  const resolved = tickets.filter(t => t.state && t.state.toLowerCase() === 'resolved').length;
-  const stillOpen = tickets.filter(t => !['closed', 'resolved'].includes((t.state || '').toLowerCase())).length;
+  const closed = tickets.filter(t => (t.state||'').toLowerCase() === 'closed').length;
+  const resolved = tickets.filter(t => (t.state||'').toLowerCase() === 'resolved').length;
+  const stillOpen = tickets.filter(t => !['closed','resolved'].includes((t.state||'').toLowerCase())).length;
   document.getElementById('kpiRaised').textContent = raised;
   document.getElementById('kpiClosed').textContent = closed;
   document.getElementById('kpiResolved').textContent = resolved;
   document.getElementById('kpiOpen').textContent = stillOpen;
 
-  // State Distribution
-  const stateCounts = countBy(tickets, 'state');
-  const stateEntries = sortedEntries(stateCounts, false);
-  makeHBar('chartState', stateEntries.map(e => e[0]), stateEntries.map(e => e[1]),
-    'State Distribution (' + raised + ' tickets)', '#EF553B');
-
   // Resolutions filtered by resolved_at in window
-  const resAll = DATA.resolutions.filter(r => timeInWindow(r.resolved_at, tw.sh, tw.sm, tw.eh, tw.em));
+  const resAll = DATA.resolutions.filter(r => inWindow(r.resolved_at, w.startMins, w.endMins));
   const resToday = resAll.filter(r => r.created_at && r.created_at.includes(DATA.today));
 
-  // Resolution by Agent - All
+  document.getElementById('sidebarTickets').textContent = raised;
+  document.getElementById('sidebarResolved').textContent = resAll.length;
+
+  // ── State Distribution ──
+  const stateCounts = countBy(tickets, 'state');
+  const stateEntries = Object.entries(stateCounts).sort((a,b) => b[1] - a[1]);
+  const stateEl = document.getElementById('chartState');
+  if (stateEntries.length) {{
+    Plotly.newPlot('chartState', [{{
+      type: 'bar', orientation: 'h',
+      y: stateEntries.map(e => e[0]), x: stateEntries.map(e => e[1]),
+      text: stateEntries.map(e => String(e[1])), textposition: 'outside',
+      marker: {{ color: '#EF553B' }},
+    }}], {{
+      title: 'State Distribution (Today)', margin: {{ l: 150, t: 40, r: 40, b: 20 }},
+      xaxis: {{ title: 'Tickets', fixedrange: true }}, yaxis: {{ fixedrange: true, automargin: true }},
+      height: 350,
+    }}, {{ displayModeBar: false, responsive: true }});
+  }} else {{
+    stateEl.innerHTML = '<p style="padding:20px;color:#888;">No data for this time window.</p>';
+  }}
+
+  // ── Resolutions by Agent — All ──
   const resAllByAgent = countBy(resAll, 'assignee');
-  const resAllEntries = sortedEntries(resAllByAgent, true);
-  makeHBar('chartResAll', resAllEntries.map(e => e[0]), resAllEntries.map(e => e[1]),
-    'All Resolved in Window \\u2014 ' + resAll.length, '#636EFA');
+  const resAllSorted = Object.entries(resAllByAgent).sort((a,b) => a[1] - b[1]); // low to high for horizontal
+  const resAllMax = Math.max(...resAllSorted.map(e => e[1]), 1);
+  const resAllEl = document.getElementById('chartResAll');
+  if (resAllSorted.length) {{
+    Plotly.newPlot('chartResAll', [{{
+      type: 'bar', orientation: 'h',
+      y: resAllSorted.map(e => e[0]), x: resAllSorted.map(e => e[1]),
+      text: resAllSorted.map(e => String(e[1])), textposition: 'outside',
+      marker: {{ color: resAllSorted.map(e => gradientColor(e[1], resAllMax, BLUE_SCALE)) }},
+      showlegend: false,
+    }}], {{
+      title: 'All Resolved Today \\u2014 ' + resAll.length,
+      margin: {{ l: 150, t: 40, r: 30, b: 30 }},
+      xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
+      yaxis: {{ fixedrange: true, automargin: true }},
+      showlegend: false,
+    }}, {{ displayModeBar: false, responsive: true }});
+  }} else {{
+    resAllEl.innerHTML = '<p style="padding:20px;color:#888;">No resolved tickets in this time window.</p>';
+  }}
 
-  // Resolution by Agent - Today's tickets only
+  // ── Resolutions by Agent — Today's tickets only ──
   const resTodayByAgent = countBy(resToday, 'assignee');
-  const resTodayEntries = sortedEntries(resTodayByAgent, true);
-  makeHBar('chartResToday', resTodayEntries.map(e => e[0]), resTodayEntries.map(e => e[1]),
-    "Today's Tickets Resolved \\u2014 " + resToday.length, '#00cc96');
+  const resTodaySorted = Object.entries(resTodayByAgent).sort((a,b) => a[1] - b[1]);
+  const resTodayMax = Math.max(...resTodaySorted.map(e => e[1]), 1);
+  const resTodayEl = document.getElementById('chartResToday');
+  if (resTodaySorted.length) {{
+    Plotly.newPlot('chartResToday', [{{
+      type: 'bar', orientation: 'h',
+      y: resTodaySorted.map(e => e[0]), x: resTodaySorted.map(e => e[1]),
+      text: resTodaySorted.map(e => String(e[1])), textposition: 'outside',
+      marker: {{ color: resTodaySorted.map(e => gradientColor(e[1], resTodayMax, GREEN_SCALE)) }},
+      showlegend: false,
+    }}], {{
+      title: "Today's Tickets Resolved \\u2014 " + resToday.length,
+      margin: {{ l: 150, t: 40, r: 30, b: 30 }},
+      xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
+      yaxis: {{ fixedrange: true, automargin: true }},
+      showlegend: false,
+    }}, {{ displayModeBar: false, responsive: true }});
+  }} else {{
+    resTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>';
+  }}
 
-  // SVC vs INC - All resolved in window
+  // ── SVC vs INC — All resolved ──
   const svcIncAll = {{}};
   resAll.forEach(r => {{
     const a = r.assignee || 'Unassigned';
     if (!svcIncAll[a]) svcIncAll[a] = {{ svc: 0, inc: 0 }};
     r.is_service_request ? svcIncAll[a].svc++ : svcIncAll[a].inc++;
   }});
-  const svcAllAgents = Object.entries(svcIncAll).sort((a, b) => (b[1].svc + b[1].inc) - (a[1].svc + a[1].inc));
-  makeStackedBar('chartSvcAll',
-    svcAllAgents.map(e => e[0]), svcAllAgents.map(e => e[1].svc), svcAllAgents.map(e => e[1].inc),
-    'All Resolved \\u2014 SVC vs INC (' + resAll.length + ' total)');
+  const svcAllAgents = Object.entries(svcIncAll).sort((a,b) => (b[1].svc+b[1].inc) - (a[1].svc+a[1].inc));
+  const svcAllEl = document.getElementById('chartSvcAll');
+  if (svcAllAgents.length) {{
+    Plotly.newPlot('chartSvcAll', [
+      {{ type:'bar', orientation:'h', y: svcAllAgents.map(e=>e[0]), x: svcAllAgents.map(e=>e[1].svc),
+         name:'Service Request', marker:{{color:'#7B68EE'}}, text: svcAllAgents.map(e=>e[1].svc||''), textposition:'inside', textfont:{{color:'white'}} }},
+      {{ type:'bar', orientation:'h', y: svcAllAgents.map(e=>e[0]), x: svcAllAgents.map(e=>e[1].inc),
+         name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
+    ], {{
+      barmode:'stack', title:'All Resolved Today \\u2014 SVC vs INC ('+resAll.length+' total)',
+      margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcAllAgents.length*30+80),
+      xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
+      legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}},
+    }}, {{displayModeBar:false,responsive:true}});
+  }} else {{
+    svcAllEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
+  }}
 
-  // SVC vs INC - Today's tickets only
+  // ── SVC vs INC — Today's tickets only ──
   const svcIncToday = {{}};
   resToday.forEach(r => {{
     const a = r.assignee || 'Unassigned';
     if (!svcIncToday[a]) svcIncToday[a] = {{ svc: 0, inc: 0 }};
     r.is_service_request ? svcIncToday[a].svc++ : svcIncToday[a].inc++;
   }});
-  const svcTodayAgents = Object.entries(svcIncToday).sort((a, b) => (b[1].svc + b[1].inc) - (a[1].svc + a[1].inc));
-  makeStackedBar('chartSvcToday',
-    svcTodayAgents.map(e => e[0]), svcTodayAgents.map(e => e[1].svc), svcTodayAgents.map(e => e[1].inc),
-    "Today's Tickets \\u2014 SVC vs INC (" + resToday.length + ' total)');
+  const svcTodayAgents = Object.entries(svcIncToday).sort((a,b) => (b[1].svc+b[1].inc) - (a[1].svc+a[1].inc));
+  const svcTodayEl = document.getElementById('chartSvcToday');
+  if (svcTodayAgents.length) {{
+    Plotly.newPlot('chartSvcToday', [
+      {{ type:'bar', orientation:'h', y: svcTodayAgents.map(e=>e[0]), x: svcTodayAgents.map(e=>e[1].svc),
+         name:'Service Request', marker:{{color:'#7B68EE'}}, text: svcTodayAgents.map(e=>e[1].svc||''), textposition:'inside', textfont:{{color:'white'}} }},
+      {{ type:'bar', orientation:'h', y: svcTodayAgents.map(e=>e[0]), x: svcTodayAgents.map(e=>e[1].inc),
+         name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
+    ], {{
+      barmode:'stack', title:"Today's Tickets Resolved \\u2014 SVC vs INC ("+resToday.length+' total)',
+      margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcTodayAgents.length*30+80),
+      xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
+      legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}},
+    }}, {{displayModeBar:false,responsive:true}});
+  }} else {{
+    svcTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
+  }}
 
-  // Subcategory breakdown
+  // ── Subcategory Breakdown ──
   const subcatCounts = {{}};
   tickets.forEach(t => {{
     if (!t.subcategory) return;
-    const key = t.category + ' | ' + t.subcategory;
+    const key = t.category + '|||' + t.subcategory;
     subcatCounts[key] = (subcatCounts[key] || 0) + 1;
   }});
-  const subcatEntries = sortedEntries(subcatCounts, false);
+  const subcatEntries = Object.entries(subcatCounts).sort((a,b) => b[1] - a[1]);
   const subcatEl = document.getElementById('subcatTable');
   if (subcatEntries.length) {{
-    const total = subcatEntries.reduce((s, e) => s + e[1], 0);
-    let html = '<table class="data-table"><thead><tr><th>Category | Subcategory</th><th>Tickets</th><th>% of Total</th></tr></thead><tbody>';
-    subcatEntries.forEach(([k, v]) => {{
-      html += '<tr><td>' + k + '</td><td>' + v + '</td><td>' + (v / total * 100).toFixed(1) + '%</td></tr>';
+    const total = subcatEntries.reduce((s,e) => s+e[1], 0);
+    let html = '<table class="data-table"><thead><tr><th>Category</th><th>Subcategory</th><th>Tickets</th><th>% of Total</th></tr></thead><tbody>';
+    subcatEntries.forEach(([k,v]) => {{
+      const [cat, sub] = k.split('|||');
+      html += '<tr><td>'+cat+'</td><td>'+sub+'</td><td>'+v+'</td><td>'+(v/total*100).toFixed(1)+'%</td></tr>';
     }});
     html += '</tbody></table>';
     subcatEl.innerHTML = html;
   }} else {{
-    subcatEl.innerHTML = '<p style="padding:20px;color:#888;">No subcategory data.</p>';
+    subcatEl.innerHTML = '<p style="padding:20px;color:#888;">No subcategory data for this window.</p>';
   }}
 
   // Sunburst
   const sunEl = document.getElementById('chartSunburst');
   if (subcatEntries.length) {{
-    const labels = [], parents = [], values = [];
-    const cats = {{}};
+    const sunData = {{}};
     tickets.forEach(t => {{
       if (!t.subcategory) return;
-      cats[t.category] = (cats[t.category] || 0) + 1;
+      if (!sunData[t.category]) sunData[t.category] = {{}};
+      sunData[t.category][t.subcategory] = (sunData[t.category][t.subcategory] || 0) + 1;
     }});
-    Object.keys(cats).forEach(c => {{ labels.push(c); parents.push(''); values.push(cats[c]); }});
-    tickets.forEach(t => {{
-      if (!t.subcategory) return;
-      const key = t.category + '/' + t.subcategory;
-      if (!labels.includes(key)) {{ labels.push(key); parents.push(t.category); values.push(0); }}
-      values[labels.indexOf(key)]++;
+    const labels = [], parents = [], values = [];
+    Object.entries(sunData).forEach(([cat, subs]) => {{
+      labels.push(cat); parents.push(''); values.push(Object.values(subs).reduce((a,b)=>a+b,0));
+      Object.entries(subs).forEach(([sub, cnt]) => {{
+        labels.push(sub); parents.push(cat); values.push(cnt);
+      }});
     }});
     Plotly.newPlot('chartSunburst', [{{
-      type: 'sunburst', labels: labels, parents: parents, values: values,
-      textinfo: 'label+percent entry',
+      type:'sunburst', labels:labels, parents:parents, values:values,
+      textinfo:'label+percent entry',
     }}], {{
-      title: 'Category / Subcategory', margin: {{ t: 40, b: 20 }}, height: 420,
-    }}, {{ displayModeBar: false, responsive: true }});
+      title:"Today's Category \\u2192 Subcategory", margin:{{t:40,b:20}}, height:450,
+    }}, {{displayModeBar:false,responsive:true}});
   }} else {{
     sunEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
 
-  // Agent Time Log
-  const timeLogs = DATA.time_logs.filter(t => timeInWindow(t.created_at, tw.sh, tw.sm, tw.eh, tw.em));
+  // ── Agent Utilization ──
+  const timeLogs = DATA.time_logs.filter(t => inWindow(t.created_at, w.startMins, w.endMins));
   const agentTime = {{}};
   timeLogs.forEach(t => {{
     const c = t.creator;
-    if (!agentTime[c]) agentTime[c] = {{ minutes: 0, entries: 0, group: DATA.agent_groups[c] || '' }};
+    if (!agentTime[c]) agentTime[c] = {{ minutes:0, entries:0, group: DATA.agent_groups[c]||'' }};
     agentTime[c].minutes += t.minutes;
     agentTime[c].entries++;
   }});
-  const agentEntries = Object.entries(agentTime).sort((a, b) => b[1].minutes - a[1].minutes);
+  const agentEntries = Object.entries(agentTime).sort((a,b) => b[1].minutes - a[1].minutes);
 
-  // Agent group chart
+  // Group chart
   const groupTime = {{}};
-  agentEntries.forEach(([a, d]) => {{
+  const groupTickets = {{}};
+  agentEntries.forEach(([a,d]) => {{
     const g = d.group || 'Unassigned';
-    groupTime[g] = (groupTime[g] || 0) + d.minutes;
+    groupTime[g] = (groupTime[g]||0) + d.minutes;
   }});
-  const groupEntries = Object.entries(groupTime).sort((a, b) => b[1] - a[1]).filter(e => e[1] > 0);
+  const groupEntries = Object.entries(groupTime).sort((a,b) => b[1]-a[1]).filter(e => e[1]>0);
   const agGroupEl = document.getElementById('chartAgentGroup');
   if (groupEntries.length) {{
     Plotly.newPlot('chartAgentGroup', [{{
-      type: 'bar', orientation: 'h',
-      y: groupEntries.map(e => e[0]), x: groupEntries.map(e => (e[1] / 60).toFixed(1)),
-      text: groupEntries.map(e => (e[1] / 60).toFixed(1) + 'h'), textposition: 'outside',
-      marker: {{ color: groupEntries.map((_, i) => ['#636EFA','#EF553B','#00cc96','#ab63fa','#FFA15A','#19d3f3'][i % 6]) }},
+      type:'bar', orientation:'h',
+      y: groupEntries.map(e=>e[0]), x: groupEntries.map(e=>+(e[1]/60).toFixed(1)),
+      text: groupEntries.map(e=>(e[1]/60).toFixed(1)), textposition:'outside',
+      marker:{{ color: groupEntries.map((_,i) => ['#636EFA','#EF553B','#00cc96','#ab63fa','#FFA15A','#19d3f3'][i%6]) }},
     }}], {{
-      title: 'Time Logged by Group', margin: {{ l: 150, t: 40, r: 40, b: 30 }},
-      height: Math.max(250, groupEntries.length * 50 + 80),
-      xaxis: {{ fixedrange: true, title: 'Hours' }}, yaxis: {{ fixedrange: true }}, showlegend: false,
-    }}, {{ displayModeBar: false, responsive: true }});
+      title:'Time Logged by Group (Today)', margin:{{l:150,t:40,r:40,b:20}},
+      height: Math.max(250, groupEntries.length*50+80),
+      xaxis:{{fixedrange:true,title:'Hours'}}, yaxis:{{fixedrange:true}}, showlegend:false,
+    }}, {{displayModeBar:false,responsive:true}});
   }} else {{
-    agGroupEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data.</p>';
+    agGroupEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data for this window.</p>';
   }}
 
   // Agent table
   const agentTableEl = document.getElementById('agentTable');
   if (agentEntries.length) {{
     let html = '<table class="data-table"><thead><tr><th>Group</th><th>Agent</th><th>Time Logged</th><th>Entries</th></tr></thead><tbody>';
-    agentEntries.forEach(([a, d]) => {{
-      const h = Math.floor(d.minutes / 60), m = d.minutes % 60;
-      html += '<tr><td>' + (d.group || '') + '</td><td>' + a + '</td><td>' + h + 'h ' + m + 'm</td><td>' + d.entries + '</td></tr>';
+    agentEntries.forEach(([a,d]) => {{
+      const h = Math.floor(d.minutes/60), m = d.minutes%60;
+      html += '<tr><td>'+(d.group||'')+'</td><td>'+a+'</td><td>'+h+'h '+m+'m</td><td>'+d.entries+'</td></tr>';
     }});
     html += '</tbody></table>';
     agentTableEl.innerHTML = html;
   }} else {{
-    agentTableEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data.</p>';
+    agentTableEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data for this window.</p>';
   }}
 
-  // Raw tickets table
-  const rawEl = document.getElementById('rawTable');
-  if (tickets.length) {{
-    let html = '<table class="data-table"><thead><tr><th>Ticket #</th><th>Name</th><th>State</th><th>Priority</th><th>Category</th><th>Subcategory</th><th>Assignee</th><th>Created (UAE)</th></tr></thead><tbody>';
-    tickets.sort((a, b) => b.created_at.localeCompare(a.created_at));
-    tickets.forEach(t => {{
-      const uae = utcToUae(t.created_at);
-      const ts = uae ? uae.toISOString().slice(0, 16).replace('T', ' ') : '';
-      html += '<tr><td>' + t.number + '</td><td>' + t.name + '</td><td>' + t.state + '</td><td>' + t.priority + '</td><td>' + t.category + '</td><td>' + t.subcategory + '</td><td>' + t.assignee + '</td><td>' + ts + '</td></tr>';
-    }});
-    html += '</tbody></table>';
-    rawEl.innerHTML = html;
-  }} else {{
-    rawEl.innerHTML = '<p style="padding:20px;color:#888;">No tickets in this time window.</p>';
-  }}
+  // ── Raw Tickets Table ──
+  renderRawTable(tickets);
+  populateFilters(tickets);
 }}
 
-// Initial render
+function renderRawTable(tickets) {{
+  const rawEl = document.getElementById('rawTable');
+  if (!tickets.length) {{
+    rawEl.innerHTML = '<p style="padding:20px;color:#888;">No tickets in this time window.</p>';
+    return;
+  }}
+  const sorted = [...tickets].sort((a,b) => b.created_at.localeCompare(a.created_at));
+  let html = '<table class="data-table" id="raw-tickets"><thead><tr><th>Ticket #</th><th>Name</th><th>State</th><th>Priority</th><th>Category</th><th>Subcategory</th><th>Assignee</th><th>Requester</th><th>Created</th></tr></thead><tbody>';
+  sorted.forEach(t => {{
+    html += '<tr><td>'+t.number+'</td><td>'+t.name+'</td><td>'+t.state+'</td><td>'+t.priority+'</td><td>'+t.category+'</td><td>'+t.subcategory+'</td><td>'+t.assignee+'</td><td>'+t.requester+'</td><td>'+fmtUaeTime(t.created_at)+'</td></tr>';
+  }});
+  html += '</tbody></table>';
+  rawEl.innerHTML = html;
+}}
+
+function populateFilters(tickets) {{
+  const states = [...new Set(tickets.map(t=>t.state).filter(Boolean))].sort();
+  const priorities = [...new Set(tickets.map(t=>t.priority).filter(Boolean))].sort();
+  const categories = [...new Set(tickets.map(t=>t.category).filter(Boolean))].sort();
+  const stateEl = document.getElementById('filterState');
+  const prioEl = document.getElementById('filterPriority');
+  const catEl = document.getElementById('filterCategory');
+  stateEl.innerHTML = '<option value="">All States</option>' + states.map(s=>'<option value="'+s+'">'+s+'</option>').join('');
+  prioEl.innerHTML = '<option value="">All Priorities</option>' + priorities.map(p=>'<option value="'+p+'">'+p+'</option>').join('');
+  catEl.innerHTML = '<option value="">All Categories</option>' + categories.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+}}
+
+function filterRawTable() {{
+  const q = document.getElementById('search').value.toLowerCase();
+  const state = document.getElementById('filterState').value;
+  const priority = document.getElementById('filterPriority').value;
+  const category = document.getElementById('filterCategory').value;
+  const rows = document.querySelectorAll('#raw-tickets tbody tr');
+  rows.forEach(row => {{
+    const cells = row.querySelectorAll('td');
+    const text = row.textContent.toLowerCase();
+    const ok = (!q || text.includes(q))
+      && (!state || (cells[2] && cells[2].textContent.trim() === state))
+      && (!priority || (cells[3] && cells[3].textContent.trim() === priority))
+      && (!category || (cells[4] && cells[4].textContent.trim() === category));
+    row.style.display = ok ? '' : 'none';
+  }});
+}}
+
 document.addEventListener('DOMContentLoaded', renderAll);
 </script>
 
