@@ -861,11 +861,15 @@ shift_resolutions = []
 for r in resolved_today_list:
     inc_id = r.get("id", 0)
     resolved_at = resolved_dates.get(inc_id, "")
+    state_val = r.get("state", "")
+    if isinstance(state_val, dict):
+        state_val = state_val.get("name", "")
     shift_resolutions.append({
         "assignee": safe_get(r, "assignee", "name") or "Unassigned",
         "is_service_request": r.get("is_service_request", False),
         "created_at": r.get("created_at", ""),
         "resolved_at": resolved_at,
+        "state": str(state_val).strip(),
     })
 
 # Prepare time log data
@@ -1011,14 +1015,14 @@ shift_html = f"""<!DOCTYPE html>
 
 <h2>Resolutions by Agent (Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
-  <div class="chart-box" id="chartResAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
-  <div class="chart-box" id="chartResToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
+  <div class="chart-box" id="chartResAll" style="min-width: 48%; flex: 1;"></div>
+  <div class="chart-box" id="chartResToday" style="min-width: 48%; flex: 1;"></div>
 </div>
 
 <h2>Service Request vs Incident (Resolved/Closed Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
-  <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
-  <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
+  <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1;"></div>
+  <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1;"></div>
 </div>
 
 <h2>Subcategory Breakdown (Today)</h2>
@@ -1129,19 +1133,22 @@ function renderAll() {{
   const tickets = DATA.tickets.filter(t => inWindow(t.created_at, w.startMins, w.endMins));
   currentTickets = tickets;
 
-  // KPIs
-  const raised = tickets.length;
-  const closed = tickets.filter(t => (t.state||'').toLowerCase() === 'closed').length;
-  const resolved = tickets.filter(t => (t.state||'').toLowerCase() === 'resolved').length;
-  const stillOpen = tickets.filter(t => !['closed','resolved'].includes((t.state||'').toLowerCase())).length;
-  document.getElementById('kpiRaised').textContent = raised;
-  document.getElementById('kpiClosed').textContent = closed;
-  document.getElementById('kpiResolved').textContent = resolved;
-  document.getElementById('kpiOpen').textContent = stillOpen;
-
   // Resolutions filtered by resolved_at in window
   const resAll = DATA.resolutions.filter(r => inWindow(r.resolved_at, w.startMins, w.endMins));
   const resToday = resAll.filter(r => r.created_at && r.created_at.includes(DATA.today));
+
+  // KPIs — Raised/Still Open based on creation time, Resolved/Closed based on resolution time
+  const raised = tickets.length;
+  let kpiResolved = 0, kpiClosed = 0;
+  resAll.forEach(r => {{
+    if ((r.state||'').toLowerCase() === 'closed') kpiClosed++;
+    else kpiResolved++;
+  }});
+  const stillOpen = tickets.filter(t => !['closed','resolved'].includes((t.state||'').toLowerCase())).length;
+  document.getElementById('kpiRaised').textContent = raised;
+  document.getElementById('kpiClosed').textContent = kpiClosed;
+  document.getElementById('kpiResolved').textContent = kpiResolved;
+  document.getElementById('kpiOpen').textContent = stillOpen;
 
   document.getElementById('sidebarTickets').textContent = raised;
   document.getElementById('sidebarResolved').textContent = resAll.length;
