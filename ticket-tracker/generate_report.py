@@ -339,7 +339,7 @@ if svc_inc_all_rows:
     fig_svc_all.update_traces(textposition="inside", textfont_color="white")
     fig_svc_all.update_layout(
         xaxis_title="Tickets", yaxis_title="",
-        margin=dict(l=150, t=40, r=30, b=30),
+        margin=dict(l=150, t=60, r=30, b=30),
         height=max(350, len(agent_order_all) * 30 + 80),
         xaxis=dict(fixedrange=True),
         yaxis=dict(fixedrange=True, automargin=True),
@@ -372,7 +372,7 @@ if svc_inc_created_today_rows:
     fig_svc_ct.update_traces(textposition="inside", textfont_color="white")
     fig_svc_ct.update_layout(
         xaxis_title="Tickets", yaxis_title="",
-        margin=dict(l=150, t=40, r=30, b=30),
+        margin=dict(l=150, t=60, r=30, b=30),
         height=max(350, len(agent_order_ct) * 30 + 80),
         xaxis=dict(fixedrange=True),
         yaxis=dict(fixedrange=True, automargin=True),
@@ -1305,7 +1305,7 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)',
-      margin:{{l:150,t:40,r:30,b:30}},
+      margin:{{l:150,t:60,r:30,b:30}},
       height: Math.max(550, svcAllAgents.length*30+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
@@ -1332,7 +1332,7 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)',
-      margin:{{l:150,t:40,r:30,b:30}},
+      margin:{{l:150,t:60,r:30,b:30}},
       height: Math.max(550, svcTodayAgents.length*30+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
