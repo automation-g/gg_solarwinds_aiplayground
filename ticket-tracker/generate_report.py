@@ -1048,6 +1048,11 @@ shift_html = f"""<!DOCTYPE html>
 
 <h2>Agent Utilization (Today)</h2>
 <div class="chart-full" id="chartAgentGroup"></div>
+<div class="filter-row" style="margin-top:12px;">
+  <select id="filterGroup" multiple onchange="filterAgentTable()" style="min-width:300px;min-height:36px;padding:6px;">
+  </select>
+  <span style="font-size:0.8rem;color:#888;align-self:center;">Hold Ctrl/Cmd to select multiple groups. No selection = All.</span>
+</div>
 <div class="table-wrap" id="agentTable"></div>
 
 </div><!-- end .main -->
@@ -1143,12 +1148,10 @@ function renderAll() {{
   document.getElementById('kpiResolved').textContent = resolved;
   document.getElementById('kpiOpen').textContent = stillOpen;
 
-  // Resolutions: only tickets created in the window that are resolved/closed
-  const ticketNumbers = new Set(tickets.map(t => t.number));
+  // Resolutions: only tickets created TODAY in the window that are resolved/closed
   const resAll = DATA.resolutions.filter(r => inWindow(r.resolved_at, w.startMins, w.endMins));
-  // Filter to only tickets created in the window
-  const resInWindow = resAll.filter(r => inWindow(r.created_at, w.startMins, w.endMins));
-  // "Today's tickets" = created in window AND resolved in window (same set for shift)
+  // Filter to only tickets created TODAY AND in the time window
+  const resInWindow = resAll.filter(r => r.created_at && r.created_at.includes(DATA.today) && inWindow(r.created_at, w.startMins, w.endMins));
   const resToday = resInWindow;
 
   document.getElementById('sidebarTickets').textContent = raised;
@@ -1355,7 +1358,7 @@ function renderAll() {{
   // Agent table
   const agentTableEl = document.getElementById('agentTable');
   if (agentEntries.length) {{
-    let html = '<table class="data-table"><thead><tr><th>Group</th><th>Agent</th><th>Time Logged</th><th>Entries</th></tr></thead><tbody>';
+    let html = '<table class="data-table" id="agent-util-shift"><thead><tr><th>Group</th><th>Agent</th><th>Time Logged</th><th>Entries</th></tr></thead><tbody>';
     agentEntries.forEach(([a,d]) => {{
       const h = Math.floor(d.minutes/60), m = d.minutes%60;
       html += '<tr><td>'+(d.group||'')+'</td><td>'+a+'</td><td>'+h+'h '+m+'m</td><td>'+d.entries+'</td></tr>';
@@ -1365,6 +1368,11 @@ function renderAll() {{
   }} else {{
     agentTableEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data for this window.</p>';
   }}
+
+  // Populate agent group filter
+  const groups = [...new Set(agentEntries.map(([a,d]) => d.group).filter(Boolean))].sort();
+  const groupSel = document.getElementById('filterGroup');
+  groupSel.innerHTML = groups.map(g => '<option value="'+g+'">'+g+'</option>').join('');
 
   // ── Raw Tickets Table ──
   renderRawTable(tickets);
@@ -1396,6 +1404,17 @@ function populateFilters(tickets) {{
   stateEl.innerHTML = '<option value="">All States</option>' + states.map(s=>'<option value="'+s+'">'+s+'</option>').join('');
   prioEl.innerHTML = '<option value="">All Priorities</option>' + priorities.map(p=>'<option value="'+p+'">'+p+'</option>').join('');
   catEl.innerHTML = '<option value="">All Categories</option>' + categories.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+}}
+
+function filterAgentTable() {{
+  const sel = document.getElementById('filterGroup');
+  const selected = Array.from(sel.selectedOptions).map(o => o.value);
+  const rows = document.querySelectorAll('#agent-util-shift tbody tr');
+  rows.forEach(row => {{
+    const cells = row.querySelectorAll('td');
+    const groupVal = cells[0] ? cells[0].textContent.trim() : '';
+    row.style.display = (selected.length === 0 || selected.includes(groupVal)) ? '' : 'none';
+  }});
 }}
 
 function filterRawTable() {{
