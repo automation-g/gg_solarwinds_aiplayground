@@ -956,8 +956,8 @@ shift_html = f"""<!DOCTYPE html>
     .main {{ margin-left: 0; padding: 12px; }}
     body {{ flex-direction: column; }}
     .charts-row {{ flex-direction: column; }}
-    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; min-height: auto !important; height: auto !important; }}
-    .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; min-height: auto !important; }}
+    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; height: 520px !important; overflow: auto !important; }}
+    .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }}
     .kpi-row {{ flex-wrap: wrap; gap: 10px; }}
     .kpi-card {{ min-width: 45%; flex: 1 1 45%; padding: 12px 8px; }}
     .kpi-card .value {{ font-size: 1.5rem; }}
@@ -968,8 +968,8 @@ shift_html = f"""<!DOCTYPE html>
     .search-box {{ width: 100%; }}
     .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
     .data-table {{ min-width: 600px; }}
-    .subcat-table-scroll {{ height: auto; max-height: 350px; }}
-    .subcat-chart {{ height: 350px; }}
+    .subcat-table-scroll {{ height: auto !important; max-height: 350px; }}
+    .subcat-chart {{ height: 350px !important; }}
   }}
 
   @media (max-width: 480px) {{
