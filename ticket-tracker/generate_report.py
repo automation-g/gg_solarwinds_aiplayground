@@ -936,7 +936,7 @@ shift_html = f"""<!DOCTYPE html>
   .kpi-card .label {{ font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }}
   .kpi-card .value {{ font-size: 2rem; font-weight: 700; color: #1a1a2e; margin-top: 4px; }}
   .charts-row {{ display: flex; gap: 16px; flex-wrap: wrap; }}
-  .chart-box {{ background: #fff; border-radius: 10px; padding: 12px; flex: 1; min-width: 400px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }}
+  .chart-box {{ background: #fff; border-radius: 10px; padding: 12px; flex: 1; min-width: 400px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; }}
   .chart-full {{ background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-top: 16px; }}
   .subcat-table-scroll {{ height: 450px; overflow-y: auto; }}
   .subcat-chart {{ height: 450px; }}
@@ -955,8 +955,8 @@ shift_html = f"""<!DOCTYPE html>
     .sidebar {{ position: relative; width: 100%; padding: 16px; }}
     .main {{ margin-left: 0; padding: 12px; }}
     body {{ flex-direction: column; }}
-    .charts-row {{ flex-direction: column; }}
-    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; height: 520px !important; overflow: auto !important; }}
+    .charts-row {{ flex-direction: column; gap: 12px; }}
+    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; height: 550px !important; overflow: hidden !important; }}
     .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }}
     .kpi-row {{ flex-wrap: wrap; gap: 10px; }}
     .kpi-card {{ min-width: 45%; flex: 1 1 45%; padding: 12px 8px; }}
@@ -968,7 +968,7 @@ shift_html = f"""<!DOCTYPE html>
     .search-box {{ width: 100%; }}
     .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
     .data-table {{ min-width: 600px; }}
-    .subcat-table-scroll {{ height: auto !important; max-height: 350px; }}
+    .subcat-table-scroll {{ height: auto !important; max-height: 350px; overflow-y: auto !important; }}
     .subcat-chart {{ height: 350px !important; }}
   }}
 
@@ -1043,14 +1043,14 @@ shift_html = f"""<!DOCTYPE html>
 
 <h2>Resolutions by Agent (Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
-  <div class="chart-box" id="chartResAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
-  <div class="chart-box" id="chartResToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
+  <div class="chart-box" id="chartResAll" style="min-width: 48%; flex: 1; height: 550px;"></div>
+  <div class="chart-box" id="chartResToday" style="min-width: 48%; flex: 1; height: 550px;"></div>
 </div>
 
 <h2>Service Request vs Incident (Resolved/Closed Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
-  <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
-  <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
+  <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1; height: 550px;"></div>
+  <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; height: 550px;"></div>
 </div>
 
 <h2>Subcategory Breakdown (Today)</h2>
@@ -1221,7 +1221,7 @@ function renderAll() {{
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
-      showlegend: false, bargap: 0.15, height: 520,
+      showlegend: false, bargap: 0.15,
     }}, {{ displayModeBar: false, responsive: true }});
   }} else {{
     resAllEl.innerHTML = '<p style="padding:20px;color:#888;">No resolved tickets in this time window.</p>';
@@ -1245,7 +1245,7 @@ function renderAll() {{
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
-      showlegend: false, bargap: 0.15, height: 520,
+      showlegend: false, bargap: 0.15,
     }}, {{ displayModeBar: false, responsive: true }});
   }} else {{
     resTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>';
@@ -1268,7 +1268,7 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)',
-      margin:{{l:150,t:40,r:30,b:30}}, height: 520,
+      margin:{{l:150,t:40,r:30,b:30}},
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:false,responsive:true}});
@@ -1294,7 +1294,7 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)',
-      margin:{{l:150,t:40,r:30,b:30}}, height: 520,
+      margin:{{l:150,t:40,r:30,b:30}},
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:false,responsive:true}});
