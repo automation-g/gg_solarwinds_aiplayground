@@ -1043,14 +1043,14 @@ shift_html = f"""<!DOCTYPE html>
 
 <h2>Resolutions by Agent (Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
-  <div class="chart-box" id="chartResAll" style="min-width: 48%; flex: 1; min-height: 550px;"></div>
-  <div class="chart-box" id="chartResToday" style="min-width: 48%; flex: 1; min-height: 550px;"></div>
+  <div class="chart-box" id="chartResAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
+  <div class="chart-box" id="chartResToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
 </div>
 
 <h2>Service Request vs Incident (Resolved/Closed Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
-  <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1; min-height: 550px;"></div>
-  <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; min-height: 550px;"></div>
+  <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
+  <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
 </div>
 
 <h2>Subcategory Breakdown (Today)</h2>
@@ -1222,8 +1222,8 @@ function renderAll() {{
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
       showlegend: false, bargap: 0.15,
-      height: Math.max(550, resAllSorted.length * 40 + 80),
     }}, {{ displayModeBar: false, responsive: true }});
+    Plotly.relayout('chartResAll', {{height: document.getElementById('chartResAll').clientHeight || 550}});
   }} else {{
     resAllEl.innerHTML = '<p style="padding:20px;color:#888;">No resolved tickets in this time window.</p>';
   }}
@@ -1247,8 +1247,8 @@ function renderAll() {{
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
       showlegend: false, bargap: 0.15,
-      height: Math.max(550, resTodaySorted.length * 40 + 80),
     }}, {{ displayModeBar: false, responsive: true }});
+    Plotly.relayout('chartResToday', {{height: document.getElementById('chartResToday').clientHeight || 550}});
   }} else {{
     resTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>';
   }}
@@ -1270,10 +1270,11 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)',
-      margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(550, svcAllAgents.length*40+80),
+      margin:{{l:150,t:40,r:30,b:30}},
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:false,responsive:true}});
+    Plotly.relayout('chartSvcAll', {{height: document.getElementById('chartSvcAll').clientHeight || 550}});
   }} else {{
     svcAllEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
@@ -1296,10 +1297,11 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)',
-      margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(550, svcTodayAgents.length*40+80),
+      margin:{{l:150,t:40,r:30,b:30}},
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:false,responsive:true}});
+    Plotly.relayout('chartSvcToday', {{height: document.getElementById('chartSvcToday').clientHeight || 550}});
   }} else {{
     svcTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
