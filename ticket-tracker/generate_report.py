@@ -1221,9 +1221,8 @@ function renderAll() {{
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
-      showlegend: false, bargap: 0.15,
+      showlegend: false, bargap: 0.15, height: 520,
     }}, {{ displayModeBar: false, responsive: true }});
-    Plotly.relayout('chartResAll', {{height: document.getElementById('chartResAll').clientHeight || 550}});
   }} else {{
     resAllEl.innerHTML = '<p style="padding:20px;color:#888;">No resolved tickets in this time window.</p>';
   }}
@@ -1246,9 +1245,8 @@ function renderAll() {{
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
-      showlegend: false, bargap: 0.15,
+      showlegend: false, bargap: 0.15, height: 520,
     }}, {{ displayModeBar: false, responsive: true }});
-    Plotly.relayout('chartResToday', {{height: document.getElementById('chartResToday').clientHeight || 550}});
   }} else {{
     resTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>';
   }}
@@ -1270,11 +1268,10 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)',
-      margin:{{l:150,t:40,r:30,b:30}},
+      margin:{{l:150,t:40,r:30,b:30}}, height: 520,
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:false,responsive:true}});
-    Plotly.relayout('chartSvcAll', {{height: document.getElementById('chartSvcAll').clientHeight || 550}});
   }} else {{
     svcAllEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
@@ -1297,11 +1294,10 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)',
-      margin:{{l:150,t:40,r:30,b:30}},
+      margin:{{l:150,t:40,r:30,b:30}}, height: 520,
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:false,responsive:true}});
-    Plotly.relayout('chartSvcToday', {{height: document.getElementById('chartSvcToday').clientHeight || 550}});
   }} else {{
     svcTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
