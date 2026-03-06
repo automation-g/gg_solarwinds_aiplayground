@@ -1049,8 +1049,8 @@ shift_html = f"""<!DOCTYPE html>
 
 <h2>Service Request vs Incident (Resolved/Closed Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
-  <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1;"></div>
-  <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1;"></div>
+  <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1; min-height: 550px;"></div>
+  <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; min-height: 550px;"></div>
 </div>
 
 <h2>Subcategory Breakdown (Today)</h2>
@@ -1270,7 +1270,7 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)',
-      margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcAllAgents.length*40+80),
+      margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(550, svcAllAgents.length*40+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:false,responsive:true}});
@@ -1296,7 +1296,7 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)',
-      margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcTodayAgents.length*40+80),
+      margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(550, svcTodayAgents.length*40+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:false,responsive:true}});
