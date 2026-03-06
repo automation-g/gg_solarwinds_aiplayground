@@ -630,6 +630,17 @@ page_html = f"""<!DOCTYPE html>
     <div class="value">{raised_today}</div>
   </div>
 
+  <div class="section-label">Time Window</div>
+  <div class="info-box">
+    <div class="label">Start</div>
+    <input type="time" id="timeStart" value="00:00" oninput="filterTable()" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(255,255,255,0.1);color:#fff;margin-top:4px;font-size:0.85rem;">
+  </div>
+  <div class="info-box">
+    <div class="label">End</div>
+    <input type="time" id="timeEnd" value="23:59" oninput="filterTable()" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(255,255,255,0.1);color:#fff;margin-top:4px;font-size:0.85rem;">
+  </div>
+  <button class="btn btn-outline" style="margin-top:6px;" onclick="document.getElementById('timeStart').value='00:00';document.getElementById('timeEnd').value='23:59';filterTable();">Reset to All Day</button>
+
   <div style="margin-top:20px;">
     <a class="btn btn-outline" href="data:text/csv;base64,{csv_b64}" download="tickets_{start_date}_{today}.csv">Download CSV</a>
   </div>
@@ -825,6 +836,12 @@ function filterTable() {{
   const priority = document.getElementById('filterPriority').value;
   const category = document.getElementById('filterCategory').value;
   const subcategory = document.getElementById('filterSubcategory').value;
+  const timeStart = document.getElementById('timeStart').value || '00:00';
+  const timeEnd = document.getElementById('timeEnd').value || '23:59';
+  const [startH, startM] = timeStart.split(':').map(Number);
+  const [endH, endM] = timeEnd.split(':').map(Number);
+  const startMins = startH * 60 + startM;
+  const endMins = endH * 60 + endM;
   const rows = document.querySelectorAll('#raw-tickets tbody tr');
   rows.forEach(row => {{
     const cells = row.querySelectorAll('td');
@@ -834,7 +851,16 @@ function filterTable() {{
     const matchPriority = !priority || (cells[3] && cells[3].textContent.trim() === priority);
     const matchCategory = !category || (cells[4] && cells[4].textContent.trim() === category);
     const matchSubcategory = !subcategory || (cells[5] && cells[5].textContent.trim() === subcategory);
-    row.style.display = (matchSearch && matchState && matchPriority && matchCategory && matchSubcategory) ? '' : 'none';
+    let matchTime = true;
+    if (cells[8]) {{
+      const timePart = cells[8].textContent.trim().split(' ')[1];
+      if (timePart) {{
+        const [ch, cm] = timePart.split(':').map(Number);
+        const mins = ch * 60 + cm;
+        matchTime = mins >= startMins && mins <= endMins;
+      }}
+    }}
+    row.style.display = (matchSearch && matchState && matchPriority && matchCategory && matchSubcategory && matchTime) ? '' : 'none';
   }});
 }}
 </script>
@@ -955,9 +981,9 @@ shift_html = f"""<!DOCTYPE html>
     .sidebar {{ position: relative; width: 100%; padding: 16px; }}
     .main {{ margin-left: 0; padding: 12px; }}
     body {{ flex-direction: column; }}
-    .charts-row {{ flex-direction: column; gap: 12px; }}
-    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; overflow: auto !important; }}
-    .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }}
+    .charts-row {{ flex-direction: column; }}
+    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; min-height: auto !important; height: auto !important; }}
+    .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; min-height: auto !important; }}
     .kpi-row {{ flex-wrap: wrap; gap: 10px; }}
     .kpi-card {{ min-width: 45%; flex: 1 1 45%; padding: 12px 8px; }}
     .kpi-card .value {{ font-size: 1.5rem; }}
@@ -968,8 +994,8 @@ shift_html = f"""<!DOCTYPE html>
     .search-box {{ width: 100%; }}
     .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
     .data-table {{ min-width: 600px; }}
-    .subcat-table-scroll {{ height: auto !important; max-height: 350px; overflow-y: auto !important; }}
-    .subcat-chart {{ height: 350px !important; }}
+    .subcat-table-scroll {{ height: auto; max-height: 350px; }}
+    .subcat-chart {{ height: 350px; }}
   }}
 
   @media (max-width: 480px) {{
