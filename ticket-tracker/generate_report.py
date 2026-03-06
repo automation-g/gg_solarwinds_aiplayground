@@ -561,19 +561,33 @@ page_html = f"""<!DOCTYPE html>
   .filter-row select {{ padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; min-width: 160px; }}
 
   @media (max-width: 900px) {{
-    .sidebar {{ position: relative; width: 100%; }}
+    .sidebar {{ position: relative; width: 100%; padding: 16px; }}
     .main {{ margin-left: 0; padding: 12px; }}
     body {{ flex-direction: column; }}
     .charts-row {{ flex-direction: column; }}
-    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; height: auto !important; }}
+    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; min-height: auto !important; height: auto !important; }}
     .chart-full {{ width: 100%; }}
-    .kpi-row {{ flex-wrap: wrap; }}
-    .kpi-card {{ min-width: 45%; }}
+    .kpi-row {{ flex-wrap: wrap; gap: 10px; }}
+    .kpi-card {{ min-width: 45%; flex: 1 1 45%; padding: 12px 8px; }}
+    .kpi-card .value {{ font-size: 1.5rem; }}
+    .kpi-card .label {{ font-size: 0.7rem; }}
+    h2 {{ font-size: 1rem; margin: 16px 0 8px; }}
     .filter-row {{ flex-direction: column; }}
     .filter-row select {{ width: 100%; min-width: auto; }}
     .search-box {{ width: 100%; }}
     .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
     .data-table {{ min-width: 600px; }}
+    .subcat-table-scroll {{ height: auto; max-height: 350px; }}
+    .subcat-chart {{ height: 350px; }}
+  }}
+
+  @media (max-width: 480px) {{
+    .kpi-card {{ min-width: 100%; flex: 1 1 100%; }}
+    .kpi-card .value {{ font-size: 1.3rem; }}
+    .sidebar h1 {{ font-size: 1rem; }}
+    .sidebar .info-box {{ padding: 8px; }}
+    .main {{ padding: 8px; }}
+    .chart-box {{ padding: 6px; border-radius: 8px; }}
   }}
 </style>
 </head>
@@ -938,19 +952,33 @@ shift_html = f"""<!DOCTYPE html>
   .filter-row select {{ padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; min-width: 160px; }}
 
   @media (max-width: 900px) {{
-    .sidebar {{ position: relative; width: 100%; }}
+    .sidebar {{ position: relative; width: 100%; padding: 16px; }}
     .main {{ margin-left: 0; padding: 12px; }}
     body {{ flex-direction: column; }}
     .charts-row {{ flex-direction: column; }}
-    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; height: auto !important; }}
+    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; min-height: auto !important; height: auto !important; }}
     .chart-full {{ width: 100%; }}
-    .kpi-row {{ flex-wrap: wrap; }}
-    .kpi-card {{ min-width: 45%; }}
+    .kpi-row {{ flex-wrap: wrap; gap: 10px; }}
+    .kpi-card {{ min-width: 45%; flex: 1 1 45%; padding: 12px 8px; }}
+    .kpi-card .value {{ font-size: 1.5rem; }}
+    .kpi-card .label {{ font-size: 0.7rem; }}
+    h2 {{ font-size: 1rem; margin: 16px 0 8px; }}
     .filter-row {{ flex-direction: column; }}
     .filter-row select {{ width: 100%; min-width: auto; }}
     .search-box {{ width: 100%; }}
     .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
     .data-table {{ min-width: 600px; }}
+    .subcat-table-scroll {{ height: auto; max-height: 350px; }}
+    .subcat-chart {{ height: 350px; }}
+  }}
+
+  @media (max-width: 480px) {{
+    .kpi-card {{ min-width: 100%; flex: 1 1 100%; }}
+    .kpi-card .value {{ font-size: 1.3rem; }}
+    .sidebar h1 {{ font-size: 1rem; }}
+    .sidebar .info-box {{ padding: 8px; }}
+    .main {{ padding: 8px; }}
+    .chart-box {{ padding: 6px; border-radius: 8px; }}
   }}
 </style>
 </head>
@@ -1176,8 +1204,8 @@ function renderAll() {{
     stateEl.innerHTML = '<p style="padding:20px;color:#888;">No data for this time window.</p>';
   }}
 
-  // ── Resolutions by Agent — All (created in window) ──
-  const resAllByAgent = countBy(resInWindow, 'assignee');
+  // ── Resolutions by Agent — All resolved/closed in window (overall) ──
+  const resAllByAgent = countBy(resAll, 'assignee');
   const resAllSorted = Object.entries(resAllByAgent).sort((a,b) => a[1] - b[1]);
   const resAllMax = Math.max(...resAllSorted.map(e => e[1]), 1);
   const resAllEl = document.getElementById('chartResAll');
@@ -1189,7 +1217,7 @@ function renderAll() {{
       marker: {{ color: resAllSorted.map(e => gradientColor(e[1], resAllMax, BLUE_SCALE)) }},
       showlegend: false,
     }}], {{
-      title: 'All Resolved/Closed Today \\u2014 ' + resInWindow.length,
+      title: 'All Resolved/Closed in Window \\u2014 ' + resAll.length,
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
