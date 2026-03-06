@@ -619,6 +619,10 @@ page_html = f"""<!DOCTYPE html>
   <div style="margin-top:20px;">
     <a class="btn btn-outline" href="data:text/csv;base64,{csv_b64}" download="tickets_{start_date}_{today}.csv">Download CSV</a>
   </div>
+
+  <div style="margin-top:12px;">
+    <a class="btn" href="shift.html" style="background:#7B68EE;">Shift Report</a>
+  </div>
 </div>
 
 <!-- Main Content -->
@@ -829,3 +833,444 @@ with open(out_path, "w", encoding="utf-8") as f:
     f.write(page_html)
 
 print(f"Report generated: {out_path} ({len(page_html):,} bytes)")
+
+# ── Shift Report (client-side time-filtered page) ────────────────────────────
+import json
+
+# Prepare today's ticket data for embedding
+shift_tickets = []
+for r in raw:
+    created = r.get("created_at", "")
+    if today_str not in str(created):
+        continue
+    shift_tickets.append({
+        "number": r.get("number", ""),
+        "name": r.get("name", ""),
+        "state": r.get("state", ""),
+        "priority": r.get("priority", ""),
+        "category": safe_get(r, "category", "name"),
+        "subcategory": safe_get(r, "subcategory", "name"),
+        "assignee": safe_get(r, "assignee", "name") or "Unassigned",
+        "requester": safe_get(r, "requester", "name"),
+        "created_at": created,
+        "is_service_request": r.get("is_service_request", False),
+    })
+
+# Prepare resolution data with audit-trail timestamps
+shift_resolutions = []
+for r in resolved_today_list:
+    inc_id = r.get("id", 0)
+    resolved_at = resolved_dates.get(inc_id, "")
+    shift_resolutions.append({
+        "assignee": safe_get(r, "assignee", "name") or "Unassigned",
+        "is_service_request": r.get("is_service_request", False),
+        "created_at": r.get("created_at", ""),
+        "resolved_at": resolved_at,
+    })
+
+# Prepare time log data
+shift_time_logs = []
+for tt in todays_logs:
+    shift_time_logs.append({
+        "creator": tt.get("creator", {}).get("name", "Unknown"),
+        "minutes": tt.get("minutes", 0),
+        "created_at": tt.get("created_at", ""),
+    })
+
+shift_json = json.dumps({
+    "tickets": shift_tickets,
+    "resolutions": shift_resolutions,
+    "time_logs": shift_time_logs,
+    "agent_groups": dict(agent_group_map),
+    "today": today_str,
+}, default=str)
+
+shift_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shift Report | IT Ticket Tracker</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; color: #1a1a2e; display: flex; min-height: 100vh; }}
+
+  .sidebar {{ width: 260px; background: #1a1a2e; color: #fff; padding: 24px 16px; flex-shrink: 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; }}
+  .sidebar h1 {{ font-size: 1.2rem; margin-bottom: 24px; color: #fff; }}
+  .sidebar .section-label {{ font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #8888aa; margin: 20px 0 8px; }}
+  .sidebar .info-box {{ background: rgba(255,255,255,0.08); border-radius: 8px; padding: 12px; margin-bottom: 12px; }}
+  .sidebar .info-box .label {{ font-size: 0.75rem; color: #aaa; }}
+  .sidebar .info-box .value {{ font-size: 0.95rem; font-weight: 600; margin-top: 2px; }}
+  .sidebar .btn {{ display: block; width: 100%; padding: 10px; background: #4472C4; color: #fff; border: none; border-radius: 6px; font-size: 0.85rem; cursor: pointer; text-align: center; margin-top: 8px; text-decoration: none; }}
+  .sidebar .btn:hover {{ background: #3561b0; }}
+  .sidebar .btn-outline {{ background: transparent; border: 1px solid rgba(255,255,255,0.3); }}
+  .sidebar .btn-outline:hover {{ background: rgba(255,255,255,0.1); }}
+  .sidebar input[type="time"] {{ width: 100%; padding: 8px; border-radius: 6px; border: none; background: rgba(255,255,255,0.1); color: #fff; font-size: 0.9rem; margin-top: 4px; }}
+
+  .main {{ margin-left: 260px; padding: 24px; flex: 1; }}
+  h2 {{ font-size: 1.2rem; margin: 24px 0 12px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 6px; }}
+  .kpi-row {{ display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }}
+  .kpi-card {{ background: #fff; border-radius: 10px; padding: 16px 24px; flex: 1; min-width: 140px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); text-align: center; }}
+  .kpi-card .label {{ font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }}
+  .kpi-card .value {{ font-size: 2rem; font-weight: 700; color: #1a1a2e; margin-top: 4px; }}
+  .charts-row {{ display: flex; gap: 16px; flex-wrap: wrap; }}
+  .chart-box {{ background: #fff; border-radius: 10px; padding: 12px; flex: 1; min-width: 400px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }}
+  .chart-full {{ background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-top: 16px; }}
+  .data-table {{ width: 100%; border-collapse: collapse; font-size: 0.85rem; }}
+  .data-table th {{ background: #1a1a2e; color: #fff; padding: 10px 12px; text-align: left; position: sticky; top: 0; }}
+  .data-table td {{ padding: 8px 12px; border-bottom: 1px solid #e8e8e8; }}
+  .data-table tr:hover td {{ background: #f0f4ff; }}
+  .table-wrap {{ background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-top: 16px; max-height: 500px; overflow: auto; }}
+  .time-badge {{ display: inline-block; background: #7B68EE; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; }}
+
+  @media (max-width: 900px) {{
+    .sidebar {{ position: relative; width: 100%; }}
+    .main {{ margin-left: 0; padding: 12px; }}
+    body {{ flex-direction: column; }}
+    .charts-row {{ flex-direction: column; }}
+    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; height: auto !important; }}
+    .chart-full {{ width: 100%; }}
+    .kpi-row {{ flex-wrap: wrap; }}
+    .kpi-card {{ min-width: 45%; }}
+    .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
+    .data-table {{ min-width: 600px; }}
+  }}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h1>Shift Report</h1>
+
+  <div class="section-label">Time Window (UAE)</div>
+  <div class="info-box">
+    <div class="label">Start Time</div>
+    <input type="time" id="shiftStart" value="14:15" onchange="renderAll()">
+  </div>
+  <div class="info-box">
+    <div class="label">End Time</div>
+    <input type="time" id="shiftEnd" value="20:30" onchange="renderAll()">
+  </div>
+
+  <button class="btn" onclick="renderAll()" style="background:#7B68EE;">Apply Time Filter</button>
+
+  <div class="section-label">Report Date</div>
+  <div class="info-box">
+    <div class="label">Date</div>
+    <div class="value">{today}</div>
+  </div>
+  <div class="info-box">
+    <div class="label">Last Updated</div>
+    <div class="value">{generated_at}</div>
+  </div>
+
+  <div style="margin-top:20px;">
+    <a class="btn btn-outline" href="index.html">Back to Full Report</a>
+  </div>
+</div>
+
+<div class="main">
+
+<h2>Shift Summary <span id="timeBadge" class="time-badge"></span></h2>
+<div class="kpi-row">
+  <div class="kpi-card"><div class="label">Raised</div><div class="value" id="kpiRaised">-</div></div>
+  <div class="kpi-card"><div class="label">Closed</div><div class="value" id="kpiClosed">-</div></div>
+  <div class="kpi-card"><div class="label">Resolved</div><div class="value" id="kpiResolved">-</div></div>
+  <div class="kpi-card"><div class="label">Still Open</div><div class="value" id="kpiOpen">-</div></div>
+</div>
+
+<h2>State Distribution</h2>
+<div class="charts-row">
+  <div class="chart-box" id="chartState" style="min-height:300px;"></div>
+</div>
+
+<h2>Resolutions by Agent</h2>
+<div class="charts-row" style="align-items: stretch;">
+  <div class="chart-box" id="chartResAll" style="min-width:48%;flex:1;height:550px;overflow:auto;"></div>
+  <div class="chart-box" id="chartResToday" style="min-width:48%;flex:1;height:550px;overflow:auto;"></div>
+</div>
+
+<h2>Service Request vs Incident (Resolved)</h2>
+<div class="charts-row" style="align-items: stretch;">
+  <div class="chart-box" id="chartSvcAll" style="min-width:48%;flex:1;height:550px;overflow:auto;"></div>
+  <div class="chart-box" id="chartSvcToday" style="min-width:48%;flex:1;height:550px;overflow:auto;"></div>
+</div>
+
+<h2>Subcategory Breakdown</h2>
+<div class="charts-row">
+  <div class="chart-box" id="subcatTable" style="max-height:450px;overflow-y:auto;"></div>
+  <div class="chart-box" id="chartSunburst" style="height:450px;"></div>
+</div>
+
+<h2>Agent Time Log</h2>
+<div class="chart-full" id="chartAgentGroup"></div>
+<div class="table-wrap" id="agentTable"></div>
+
+<h2>Raw Tickets</h2>
+<div class="table-wrap" id="rawTable"></div>
+
+</div>
+
+<script>
+const DATA = {shift_json};
+const UAE_OFFSET = 4; // UTC+4
+
+function utcToUae(utcStr) {{
+  if (!utcStr) return null;
+  const d = new Date(utcStr);
+  if (isNaN(d)) return null;
+  return new Date(d.getTime() + UAE_OFFSET * 3600000);
+}}
+
+function timeInWindow(utcStr, startH, startM, endH, endM) {{
+  const uae = utcToUae(utcStr);
+  if (!uae) return false;
+  const mins = uae.getHours() * 60 + uae.getMinutes();
+  const startMins = startH * 60 + startM;
+  const endMins = endH * 60 + endM;
+  return mins >= startMins && mins <= endMins;
+}}
+
+function getTimeWindow() {{
+  const s = document.getElementById('shiftStart').value.split(':');
+  const e = document.getElementById('shiftEnd').value.split(':');
+  return {{
+    sh: parseInt(s[0]), sm: parseInt(s[1]),
+    eh: parseInt(e[0]), em: parseInt(e[1]),
+  }};
+}}
+
+function fmtTime(h, m) {{
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+}}
+
+function countBy(arr, key) {{
+  const m = {{}};
+  arr.forEach(r => {{ const k = r[key] || 'Unassigned'; m[k] = (m[k] || 0) + 1; }});
+  return m;
+}}
+
+function sortedEntries(obj, asc) {{
+  return Object.entries(obj).sort((a, b) => asc ? a[1] - b[1] : b[1] - a[1]);
+}}
+
+function makeHBar(divId, labels, values, title, color, textColor) {{
+  const el = document.getElementById(divId);
+  if (!labels.length) {{ el.innerHTML = '<p style="padding:20px;color:#888;">No data for this time window.</p>'; return; }}
+  Plotly.newPlot(divId, [{{
+    type: 'bar', orientation: 'h', y: labels, x: values,
+    text: values.map(String), textposition: 'outside',
+    marker: {{ color: color || '#636EFA' }},
+    textfont: {{ color: textColor || undefined }},
+  }}], {{
+    title: title, margin: {{ l: 150, t: 40, r: 40, b: 30 }},
+    height: Math.max(350, labels.length * 30 + 80),
+    xaxis: {{ fixedrange: true, title: 'Tickets' }}, yaxis: {{ fixedrange: true, automargin: true }},
+  }}, {{ displayModeBar: false, responsive: true }});
+}}
+
+function makeStackedBar(divId, agents, svcCounts, incCounts, title) {{
+  const el = document.getElementById(divId);
+  if (!agents.length) {{ el.innerHTML = '<p style="padding:20px;color:#888;">No data for this time window.</p>'; return; }}
+  Plotly.newPlot(divId, [
+    {{ type: 'bar', orientation: 'h', y: agents, x: svcCounts, name: 'Service Request',
+       marker: {{ color: '#7B68EE' }}, text: svcCounts.map(v => v || ''), textposition: 'inside', textfont: {{ color: 'white' }} }},
+    {{ type: 'bar', orientation: 'h', y: agents, x: incCounts, name: 'Incident',
+       marker: {{ color: '#DAA520' }}, text: incCounts.map(v => v || ''), textposition: 'inside', textfont: {{ color: 'white' }} }},
+  ], {{
+    barmode: 'stack', title: title, margin: {{ l: 150, t: 40, r: 40, b: 30 }},
+    height: Math.max(350, agents.length * 30 + 80),
+    xaxis: {{ fixedrange: true, title: 'Tickets' }}, yaxis: {{ fixedrange: true, automargin: true }},
+    legend: {{ orientation: 'h', yanchor: 'bottom', y: 1.02, xanchor: 'right', x: 1 }},
+  }}, {{ displayModeBar: false, responsive: true }});
+}}
+
+function renderAll() {{
+  const tw = getTimeWindow();
+  document.getElementById('timeBadge').textContent = fmtTime(tw.sh, tw.sm) + ' - ' + fmtTime(tw.eh, tw.em) + ' UAE';
+
+  // Filter tickets created in window
+  const tickets = DATA.tickets.filter(t => timeInWindow(t.created_at, tw.sh, tw.sm, tw.eh, tw.em));
+
+  // KPIs
+  const raised = tickets.length;
+  const closed = tickets.filter(t => t.state && t.state.toLowerCase() === 'closed').length;
+  const resolved = tickets.filter(t => t.state && t.state.toLowerCase() === 'resolved').length;
+  const stillOpen = tickets.filter(t => !['closed', 'resolved'].includes((t.state || '').toLowerCase())).length;
+  document.getElementById('kpiRaised').textContent = raised;
+  document.getElementById('kpiClosed').textContent = closed;
+  document.getElementById('kpiResolved').textContent = resolved;
+  document.getElementById('kpiOpen').textContent = stillOpen;
+
+  // State Distribution
+  const stateCounts = countBy(tickets, 'state');
+  const stateEntries = sortedEntries(stateCounts, false);
+  makeHBar('chartState', stateEntries.map(e => e[0]), stateEntries.map(e => e[1]),
+    'State Distribution (' + raised + ' tickets)', '#EF553B');
+
+  // Resolutions filtered by resolved_at in window
+  const resAll = DATA.resolutions.filter(r => timeInWindow(r.resolved_at, tw.sh, tw.sm, tw.eh, tw.em));
+  const resToday = resAll.filter(r => r.created_at && r.created_at.includes(DATA.today));
+
+  // Resolution by Agent - All
+  const resAllByAgent = countBy(resAll, 'assignee');
+  const resAllEntries = sortedEntries(resAllByAgent, true);
+  makeHBar('chartResAll', resAllEntries.map(e => e[0]), resAllEntries.map(e => e[1]),
+    'All Resolved in Window \\u2014 ' + resAll.length, '#636EFA');
+
+  // Resolution by Agent - Today's tickets only
+  const resTodayByAgent = countBy(resToday, 'assignee');
+  const resTodayEntries = sortedEntries(resTodayByAgent, true);
+  makeHBar('chartResToday', resTodayEntries.map(e => e[0]), resTodayEntries.map(e => e[1]),
+    "Today's Tickets Resolved \\u2014 " + resToday.length, '#00cc96');
+
+  // SVC vs INC - All resolved in window
+  const svcIncAll = {{}};
+  resAll.forEach(r => {{
+    const a = r.assignee || 'Unassigned';
+    if (!svcIncAll[a]) svcIncAll[a] = {{ svc: 0, inc: 0 }};
+    r.is_service_request ? svcIncAll[a].svc++ : svcIncAll[a].inc++;
+  }});
+  const svcAllAgents = Object.entries(svcIncAll).sort((a, b) => (b[1].svc + b[1].inc) - (a[1].svc + a[1].inc));
+  makeStackedBar('chartSvcAll',
+    svcAllAgents.map(e => e[0]), svcAllAgents.map(e => e[1].svc), svcAllAgents.map(e => e[1].inc),
+    'All Resolved \\u2014 SVC vs INC (' + resAll.length + ' total)');
+
+  // SVC vs INC - Today's tickets only
+  const svcIncToday = {{}};
+  resToday.forEach(r => {{
+    const a = r.assignee || 'Unassigned';
+    if (!svcIncToday[a]) svcIncToday[a] = {{ svc: 0, inc: 0 }};
+    r.is_service_request ? svcIncToday[a].svc++ : svcIncToday[a].inc++;
+  }});
+  const svcTodayAgents = Object.entries(svcIncToday).sort((a, b) => (b[1].svc + b[1].inc) - (a[1].svc + a[1].inc));
+  makeStackedBar('chartSvcToday',
+    svcTodayAgents.map(e => e[0]), svcTodayAgents.map(e => e[1].svc), svcTodayAgents.map(e => e[1].inc),
+    "Today's Tickets \\u2014 SVC vs INC (" + resToday.length + ' total)');
+
+  // Subcategory breakdown
+  const subcatCounts = {{}};
+  tickets.forEach(t => {{
+    if (!t.subcategory) return;
+    const key = t.category + ' | ' + t.subcategory;
+    subcatCounts[key] = (subcatCounts[key] || 0) + 1;
+  }});
+  const subcatEntries = sortedEntries(subcatCounts, false);
+  const subcatEl = document.getElementById('subcatTable');
+  if (subcatEntries.length) {{
+    const total = subcatEntries.reduce((s, e) => s + e[1], 0);
+    let html = '<table class="data-table"><thead><tr><th>Category | Subcategory</th><th>Tickets</th><th>% of Total</th></tr></thead><tbody>';
+    subcatEntries.forEach(([k, v]) => {{
+      html += '<tr><td>' + k + '</td><td>' + v + '</td><td>' + (v / total * 100).toFixed(1) + '%</td></tr>';
+    }});
+    html += '</tbody></table>';
+    subcatEl.innerHTML = html;
+  }} else {{
+    subcatEl.innerHTML = '<p style="padding:20px;color:#888;">No subcategory data.</p>';
+  }}
+
+  // Sunburst
+  const sunEl = document.getElementById('chartSunburst');
+  if (subcatEntries.length) {{
+    const labels = [], parents = [], values = [];
+    const cats = {{}};
+    tickets.forEach(t => {{
+      if (!t.subcategory) return;
+      cats[t.category] = (cats[t.category] || 0) + 1;
+    }});
+    Object.keys(cats).forEach(c => {{ labels.push(c); parents.push(''); values.push(cats[c]); }});
+    tickets.forEach(t => {{
+      if (!t.subcategory) return;
+      const key = t.category + '/' + t.subcategory;
+      if (!labels.includes(key)) {{ labels.push(key); parents.push(t.category); values.push(0); }}
+      values[labels.indexOf(key)]++;
+    }});
+    Plotly.newPlot('chartSunburst', [{{
+      type: 'sunburst', labels: labels, parents: parents, values: values,
+      textinfo: 'label+percent entry',
+    }}], {{
+      title: 'Category / Subcategory', margin: {{ t: 40, b: 20 }}, height: 420,
+    }}, {{ displayModeBar: false, responsive: true }});
+  }} else {{
+    sunEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
+  }}
+
+  // Agent Time Log
+  const timeLogs = DATA.time_logs.filter(t => timeInWindow(t.created_at, tw.sh, tw.sm, tw.eh, tw.em));
+  const agentTime = {{}};
+  timeLogs.forEach(t => {{
+    const c = t.creator;
+    if (!agentTime[c]) agentTime[c] = {{ minutes: 0, entries: 0, group: DATA.agent_groups[c] || '' }};
+    agentTime[c].minutes += t.minutes;
+    agentTime[c].entries++;
+  }});
+  const agentEntries = Object.entries(agentTime).sort((a, b) => b[1].minutes - a[1].minutes);
+
+  // Agent group chart
+  const groupTime = {{}};
+  agentEntries.forEach(([a, d]) => {{
+    const g = d.group || 'Unassigned';
+    groupTime[g] = (groupTime[g] || 0) + d.minutes;
+  }});
+  const groupEntries = Object.entries(groupTime).sort((a, b) => b[1] - a[1]).filter(e => e[1] > 0);
+  const agGroupEl = document.getElementById('chartAgentGroup');
+  if (groupEntries.length) {{
+    Plotly.newPlot('chartAgentGroup', [{{
+      type: 'bar', orientation: 'h',
+      y: groupEntries.map(e => e[0]), x: groupEntries.map(e => (e[1] / 60).toFixed(1)),
+      text: groupEntries.map(e => (e[1] / 60).toFixed(1) + 'h'), textposition: 'outside',
+      marker: {{ color: groupEntries.map((_, i) => ['#636EFA','#EF553B','#00cc96','#ab63fa','#FFA15A','#19d3f3'][i % 6]) }},
+    }}], {{
+      title: 'Time Logged by Group', margin: {{ l: 150, t: 40, r: 40, b: 30 }},
+      height: Math.max(250, groupEntries.length * 50 + 80),
+      xaxis: {{ fixedrange: true, title: 'Hours' }}, yaxis: {{ fixedrange: true }}, showlegend: false,
+    }}, {{ displayModeBar: false, responsive: true }});
+  }} else {{
+    agGroupEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data.</p>';
+  }}
+
+  // Agent table
+  const agentTableEl = document.getElementById('agentTable');
+  if (agentEntries.length) {{
+    let html = '<table class="data-table"><thead><tr><th>Group</th><th>Agent</th><th>Time Logged</th><th>Entries</th></tr></thead><tbody>';
+    agentEntries.forEach(([a, d]) => {{
+      const h = Math.floor(d.minutes / 60), m = d.minutes % 60;
+      html += '<tr><td>' + (d.group || '') + '</td><td>' + a + '</td><td>' + h + 'h ' + m + 'm</td><td>' + d.entries + '</td></tr>';
+    }});
+    html += '</tbody></table>';
+    agentTableEl.innerHTML = html;
+  }} else {{
+    agentTableEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data.</p>';
+  }}
+
+  // Raw tickets table
+  const rawEl = document.getElementById('rawTable');
+  if (tickets.length) {{
+    let html = '<table class="data-table"><thead><tr><th>Ticket #</th><th>Name</th><th>State</th><th>Priority</th><th>Category</th><th>Subcategory</th><th>Assignee</th><th>Created (UAE)</th></tr></thead><tbody>';
+    tickets.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    tickets.forEach(t => {{
+      const uae = utcToUae(t.created_at);
+      const ts = uae ? uae.toISOString().slice(0, 16).replace('T', ' ') : '';
+      html += '<tr><td>' + t.number + '</td><td>' + t.name + '</td><td>' + t.state + '</td><td>' + t.priority + '</td><td>' + t.category + '</td><td>' + t.subcategory + '</td><td>' + t.assignee + '</td><td>' + ts + '</td></tr>';
+    }});
+    html += '</tbody></table>';
+    rawEl.innerHTML = html;
+  }} else {{
+    rawEl.innerHTML = '<p style="padding:20px;color:#888;">No tickets in this time window.</p>';
+  }}
+}}
+
+// Initial render
+document.addEventListener('DOMContentLoaded', renderAll);
+</script>
+
+</body>
+</html>"""
+
+shift_out = "shift.html"
+with open(shift_out, "w", encoding="utf-8") as f:
+    f.write(shift_html)
+print(f"Shift report generated: {shift_out} ({len(shift_html):,} bytes)")
