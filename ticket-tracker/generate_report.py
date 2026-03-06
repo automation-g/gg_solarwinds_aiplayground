@@ -1155,11 +1155,11 @@ function renderAll() {{
       type: 'bar', orientation: 'h',
       y: stateEntries.map(e => e[0]), x: stateEntries.map(e => e[1]),
       text: stateEntries.map(e => String(e[1])), textposition: 'outside',
-      marker: {{ color: '#EF553B' }}, width: 0.5,
+      marker: {{ color: '#EF553B' }},
     }}], {{
       title: 'State Distribution (Today)', margin: {{ l: 150, t: 40, r: 40, b: 20 }},
       xaxis: {{ title: 'Tickets', fixedrange: true }}, yaxis: {{ fixedrange: true, automargin: true }},
-      height: 350,
+      height: 350, bargap: 0.15,
     }}, {{ displayModeBar: false, responsive: true }});
   }} else {{
     stateEl.innerHTML = '<p style="padding:20px;color:#888;">No data for this time window.</p>';
@@ -1176,13 +1176,13 @@ function renderAll() {{
       y: resAllSorted.map(e => e[0]), x: resAllSorted.map(e => e[1]),
       text: resAllSorted.map(e => String(e[1])), textposition: 'outside',
       marker: {{ color: resAllSorted.map(e => gradientColor(e[1], resAllMax, BLUE_SCALE)) }},
-      showlegend: false, width: 0.5,
+      showlegend: false,
     }}], {{
       title: 'All Resolved/Closed Today \\u2014 ' + resAll.length,
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
-      showlegend: false,
+      showlegend: false, bargap: 0.15,
     }}, {{ displayModeBar: false, responsive: true }});
   }} else {{
     resAllEl.innerHTML = '<p style="padding:20px;color:#888;">No resolved tickets in this time window.</p>';
@@ -1199,13 +1199,13 @@ function renderAll() {{
       y: resTodaySorted.map(e => e[0]), x: resTodaySorted.map(e => e[1]),
       text: resTodaySorted.map(e => String(e[1])), textposition: 'outside',
       marker: {{ color: resTodaySorted.map(e => gradientColor(e[1], resTodayMax, GREEN_SCALE)) }},
-      showlegend: false, width: 0.5,
+      showlegend: false,
     }}], {{
       title: "Today's Tickets Resolved/Closed \\u2014 " + resToday.length,
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
-      showlegend: false,
+      showlegend: false, bargap: 0.15,
     }}, {{ displayModeBar: false, responsive: true }});
   }} else {{
     resTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>';
@@ -1223,14 +1223,14 @@ function renderAll() {{
   if (svcAllAgents.length) {{
     Plotly.newPlot('chartSvcAll', [
       {{ type:'bar', orientation:'h', y: svcAllAgents.map(e=>e[0]), x: svcAllAgents.map(e=>e[1].svc),
-         name:'Service Request', marker:{{color:'#7B68EE'}}, text: svcAllAgents.map(e=>e[1].svc||''), textposition:'inside', textfont:{{color:'white'}}, width:0.5 }},
+         name:'Service Request', marker:{{color:'#7B68EE'}}, text: svcAllAgents.map(e=>e[1].svc||''), textposition:'inside', textfont:{{color:'white'}} }},
       {{ type:'bar', orientation:'h', y: svcAllAgents.map(e=>e[0]), x: svcAllAgents.map(e=>e[1].inc),
-         name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}}, width:0.5 }},
+         name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:'All Resolved/Closed Today \\u2014 SVC vs INC ('+resAll.length+' total)',
       margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcAllAgents.length*40+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
-      legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}},
+      legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:false,responsive:true}});
   }} else {{
     svcAllEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
@@ -1248,14 +1248,14 @@ function renderAll() {{
   if (svcTodayAgents.length) {{
     Plotly.newPlot('chartSvcToday', [
       {{ type:'bar', orientation:'h', y: svcTodayAgents.map(e=>e[0]), x: svcTodayAgents.map(e=>e[1].svc),
-         name:'Service Request', marker:{{color:'#7B68EE'}}, text: svcTodayAgents.map(e=>e[1].svc||''), textposition:'inside', textfont:{{color:'white'}}, width:0.5 }},
+         name:'Service Request', marker:{{color:'#7B68EE'}}, text: svcTodayAgents.map(e=>e[1].svc||''), textposition:'inside', textfont:{{color:'white'}} }},
       {{ type:'bar', orientation:'h', y: svcTodayAgents.map(e=>e[0]), x: svcTodayAgents.map(e=>e[1].inc),
-         name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}}, width:0.5 }},
+         name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+resToday.length+' total)',
       margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcTodayAgents.length*40+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
-      legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}},
+      legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:false,responsive:true}});
   }} else {{
     svcTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
@@ -1283,7 +1283,7 @@ function renderAll() {{
     subcatEl.innerHTML = '<p style="padding:20px;color:#888;">No subcategory data for this window.</p>';
   }}
 
-  // Sunburst
+  // Sunburst — use unique ids to avoid duplicate subcategory names across categories
   const sunEl = document.getElementById('chartSunburst');
   if (subcatEntries.length) {{
     const sunData = {{}};
@@ -1292,16 +1292,16 @@ function renderAll() {{
       if (!sunData[t.category]) sunData[t.category] = {{}};
       sunData[t.category][t.subcategory] = (sunData[t.category][t.subcategory] || 0) + 1;
     }});
-    const labels = [], parents = [], values = [];
+    const ids = [], labels = [], parents = [], values = [];
     Object.entries(sunData).forEach(([cat, subs]) => {{
-      labels.push(cat); parents.push(''); values.push(Object.values(subs).reduce((a,b)=>a+b,0));
+      ids.push(cat); labels.push(cat); parents.push(''); values.push(Object.values(subs).reduce((a,b)=>a+b,0));
       Object.entries(subs).forEach(([sub, cnt]) => {{
-        labels.push(sub); parents.push(cat); values.push(cnt);
+        ids.push(cat + ' / ' + sub); labels.push(sub); parents.push(cat); values.push(cnt);
       }});
     }});
     Plotly.newPlot('chartSunburst', [{{
-      type:'sunburst', labels:labels, parents:parents, values:values,
-      textinfo:'label+percent entry',
+      type:'sunburst', ids:ids, labels:labels, parents:parents, values:values,
+      textinfo:'label+percent entry', branchvalues:'total',
     }}], {{
       title:"Today's Category \\u2192 Subcategory", margin:{{t:40,b:20}}, height:450,
     }}, {{displayModeBar:false,responsive:true}});
@@ -1335,11 +1335,10 @@ function renderAll() {{
       y: groupEntries.map(e=>e[0]), x: groupEntries.map(e=>+(e[1]/60).toFixed(1)),
       text: groupEntries.map(e=>(e[1]/60).toFixed(1)), textposition:'outside',
       marker:{{ color: groupEntries.map((_,i) => ['#636EFA','#EF553B','#00cc96','#ab63fa','#FFA15A','#19d3f3'][i%6]) }},
-      width: 0.5,
     }}], {{
       title:'Time Logged by Group (Today)', margin:{{l:150,t:40,r:40,b:20}},
       height: Math.max(350, groupEntries.length*60+100),
-      xaxis:{{fixedrange:true,title:'Hours'}}, yaxis:{{fixedrange:true,automargin:true}}, showlegend:false,
+      xaxis:{{fixedrange:true,title:'Hours'}}, yaxis:{{fixedrange:true,automargin:true}}, showlegend:false, bargap:0.15,
     }}, {{displayModeBar:false,responsive:true}});
   }} else {{
     agGroupEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data for this window.</p>';
