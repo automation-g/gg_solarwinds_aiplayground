@@ -270,7 +270,7 @@ if res_by_agent:
     )
     fig_res_agent = px.bar(
         res_agent_df, x="Resolved", y="Agent", orientation="h",
-        title=f"All Resolved Today — {total_resolved_by_agent}",
+        title=f"All Resolved/Closed Today — {total_resolved_by_agent}",
         text="Resolved", color="Resolved",
         color_continuous_scale=["#a0a7e8", "#636EFA", "#2d2d5e", "#1a1a2e"],
     )
@@ -301,7 +301,7 @@ if res_today_only:
     )
     fig_res_today = px.bar(
         res_today_df, x="Resolved", y="Agent", orientation="h",
-        title=f"Today's Tickets Resolved — {total_resolved_today_only}",
+        title=f"Today's Tickets Resolved/Closed — {total_resolved_today_only}",
         text="Resolved", color="Resolved",
         color_continuous_scale=["#b8d4a8", "#00cc96", "#1a7a5c", "#0d4030"],
     )
@@ -331,7 +331,7 @@ if svc_inc_all_rows:
     agent_order_all.reverse()
     fig_svc_all = px.bar(
         svc_inc_all_agg, x="Count", y="Agent", color="Type", orientation="h",
-        title=f"All Resolved Today — SVC vs INC ({len(svc_inc_all_rows)} total)",
+        title=f"All Resolved/Closed Today — SVC vs INC ({len(svc_inc_all_rows)} total)",
         text="Count", barmode="stack",
         color_discrete_map={"Service Request": "#7B68EE", "Incident": "#DAA520"},
         category_orders={"Agent": agent_order_all},
@@ -364,7 +364,7 @@ if svc_inc_created_today_rows:
     agent_order_ct.reverse()
     fig_svc_ct = px.bar(
         svc_inc_ct_agg, x="Count", y="Agent", color="Type", orientation="h",
-        title=f"Today's Tickets Resolved — SVC vs INC ({len(svc_inc_created_today_rows)} total)",
+        title=f"Today's Tickets Resolved/Closed — SVC vs INC ({len(svc_inc_created_today_rows)} total)",
         text="Count", barmode="stack",
         color_discrete_map={"Service Request": "#7B68EE", "Incident": "#DAA520"},
         category_orders={"Agent": agent_order_ct},
@@ -655,7 +655,7 @@ page_html = f"""<!DOCTYPE html>
   <div class="chart-box" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;">{chart_resolution_today_only if chart_resolution_today_only else '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>'}</div>
 </div>
 
-<h2>Service Request vs Incident (Resolved Today)</h2>
+<h2>Service Request vs Incident (Resolved/Closed Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
   <div class="chart-box" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;">{chart_svc_inc_all if chart_svc_inc_all else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
   <div class="chart-box" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;">{chart_svc_inc_created_today if chart_svc_inc_created_today else '<p style="padding:20px;color:#888;">No data.</p>'}</div>
@@ -1015,7 +1015,7 @@ shift_html = f"""<!DOCTYPE html>
   <div class="chart-box" id="chartResToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
 </div>
 
-<h2>Service Request vs Incident (Resolved Today)</h2>
+<h2>Service Request vs Incident (Resolved/Closed Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
   <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
   <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
@@ -1178,7 +1178,7 @@ function renderAll() {{
       marker: {{ color: resAllSorted.map(e => gradientColor(e[1], resAllMax, BLUE_SCALE)) }},
       showlegend: false, width: 0.5,
     }}], {{
-      title: 'All Resolved Today \\u2014 ' + resAll.length,
+      title: 'All Resolved/Closed Today \\u2014 ' + resAll.length,
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
@@ -1201,7 +1201,7 @@ function renderAll() {{
       marker: {{ color: resTodaySorted.map(e => gradientColor(e[1], resTodayMax, GREEN_SCALE)) }},
       showlegend: false, width: 0.5,
     }}], {{
-      title: "Today's Tickets Resolved \\u2014 " + resToday.length,
+      title: "Today's Tickets Resolved/Closed \\u2014 " + resToday.length,
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
@@ -1227,7 +1227,7 @@ function renderAll() {{
       {{ type:'bar', orientation:'h', y: svcAllAgents.map(e=>e[0]), x: svcAllAgents.map(e=>e[1].inc),
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}}, width:0.5 }},
     ], {{
-      barmode:'stack', title:'All Resolved Today \\u2014 SVC vs INC ('+resAll.length+' total)',
+      barmode:'stack', title:'All Resolved/Closed Today \\u2014 SVC vs INC ('+resAll.length+' total)',
       margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcAllAgents.length*40+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}},
@@ -1252,7 +1252,7 @@ function renderAll() {{
       {{ type:'bar', orientation:'h', y: svcTodayAgents.map(e=>e[0]), x: svcTodayAgents.map(e=>e[1].inc),
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}}, width:0.5 }},
     ], {{
-      barmode:'stack', title:"Today's Tickets Resolved \\u2014 SVC vs INC ("+resToday.length+' total)',
+      barmode:'stack', title:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+resToday.length+' total)',
       margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcTodayAgents.length*40+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}},
