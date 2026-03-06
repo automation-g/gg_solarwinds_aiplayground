@@ -1155,7 +1155,7 @@ function renderAll() {{
       type: 'bar', orientation: 'h',
       y: stateEntries.map(e => e[0]), x: stateEntries.map(e => e[1]),
       text: stateEntries.map(e => String(e[1])), textposition: 'outside',
-      marker: {{ color: '#EF553B' }},
+      marker: {{ color: '#EF553B' }}, width: 0.5,
     }}], {{
       title: 'State Distribution (Today)', margin: {{ l: 150, t: 40, r: 40, b: 20 }},
       xaxis: {{ title: 'Tickets', fixedrange: true }}, yaxis: {{ fixedrange: true, automargin: true }},
@@ -1176,7 +1176,7 @@ function renderAll() {{
       y: resAllSorted.map(e => e[0]), x: resAllSorted.map(e => e[1]),
       text: resAllSorted.map(e => String(e[1])), textposition: 'outside',
       marker: {{ color: resAllSorted.map(e => gradientColor(e[1], resAllMax, BLUE_SCALE)) }},
-      showlegend: false,
+      showlegend: false, width: 0.5,
     }}], {{
       title: 'All Resolved Today \\u2014 ' + resAll.length,
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
@@ -1199,7 +1199,7 @@ function renderAll() {{
       y: resTodaySorted.map(e => e[0]), x: resTodaySorted.map(e => e[1]),
       text: resTodaySorted.map(e => String(e[1])), textposition: 'outside',
       marker: {{ color: resTodaySorted.map(e => gradientColor(e[1], resTodayMax, GREEN_SCALE)) }},
-      showlegend: false,
+      showlegend: false, width: 0.5,
     }}], {{
       title: "Today's Tickets Resolved \\u2014 " + resToday.length,
       margin: {{ l: 150, t: 40, r: 30, b: 30 }},
@@ -1223,12 +1223,12 @@ function renderAll() {{
   if (svcAllAgents.length) {{
     Plotly.newPlot('chartSvcAll', [
       {{ type:'bar', orientation:'h', y: svcAllAgents.map(e=>e[0]), x: svcAllAgents.map(e=>e[1].svc),
-         name:'Service Request', marker:{{color:'#7B68EE'}}, text: svcAllAgents.map(e=>e[1].svc||''), textposition:'inside', textfont:{{color:'white'}} }},
+         name:'Service Request', marker:{{color:'#7B68EE'}}, text: svcAllAgents.map(e=>e[1].svc||''), textposition:'inside', textfont:{{color:'white'}}, width:0.5 }},
       {{ type:'bar', orientation:'h', y: svcAllAgents.map(e=>e[0]), x: svcAllAgents.map(e=>e[1].inc),
-         name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
+         name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}}, width:0.5 }},
     ], {{
       barmode:'stack', title:'All Resolved Today \\u2014 SVC vs INC ('+resAll.length+' total)',
-      margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcAllAgents.length*30+80),
+      margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcAllAgents.length*40+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}},
     }}, {{displayModeBar:false,responsive:true}});
@@ -1248,12 +1248,12 @@ function renderAll() {{
   if (svcTodayAgents.length) {{
     Plotly.newPlot('chartSvcToday', [
       {{ type:'bar', orientation:'h', y: svcTodayAgents.map(e=>e[0]), x: svcTodayAgents.map(e=>e[1].svc),
-         name:'Service Request', marker:{{color:'#7B68EE'}}, text: svcTodayAgents.map(e=>e[1].svc||''), textposition:'inside', textfont:{{color:'white'}} }},
+         name:'Service Request', marker:{{color:'#7B68EE'}}, text: svcTodayAgents.map(e=>e[1].svc||''), textposition:'inside', textfont:{{color:'white'}}, width:0.5 }},
       {{ type:'bar', orientation:'h', y: svcTodayAgents.map(e=>e[0]), x: svcTodayAgents.map(e=>e[1].inc),
-         name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
+         name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}}, width:0.5 }},
     ], {{
       barmode:'stack', title:"Today's Tickets Resolved \\u2014 SVC vs INC ("+resToday.length+' total)',
-      margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcTodayAgents.length*30+80),
+      margin:{{l:150,t:40,r:30,b:30}}, height: Math.max(350, svcTodayAgents.length*40+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}},
     }}, {{displayModeBar:false,responsive:true}});
@@ -1335,10 +1335,11 @@ function renderAll() {{
       y: groupEntries.map(e=>e[0]), x: groupEntries.map(e=>+(e[1]/60).toFixed(1)),
       text: groupEntries.map(e=>(e[1]/60).toFixed(1)), textposition:'outside',
       marker:{{ color: groupEntries.map((_,i) => ['#636EFA','#EF553B','#00cc96','#ab63fa','#FFA15A','#19d3f3'][i%6]) }},
+      width: 0.5,
     }}], {{
       title:'Time Logged by Group (Today)', margin:{{l:150,t:40,r:40,b:20}},
-      height: Math.max(250, groupEntries.length*50+80),
-      xaxis:{{fixedrange:true,title:'Hours'}}, yaxis:{{fixedrange:true}}, showlegend:false,
+      height: Math.max(350, groupEntries.length*60+100),
+      xaxis:{{fixedrange:true,title:'Hours'}}, yaxis:{{fixedrange:true,automargin:true}}, showlegend:false,
     }}, {{displayModeBar:false,responsive:true}});
   }} else {{
     agGroupEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data for this window.</p>';
