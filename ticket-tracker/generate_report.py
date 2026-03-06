@@ -982,7 +982,7 @@ shift_html = f"""<!DOCTYPE html>
     .main {{ margin-left: 0; padding: 12px; }}
     body {{ flex-direction: column; }}
     .charts-row {{ flex-direction: column; }}
-    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; min-height: auto !important; height: auto !important; }}
+    .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; overflow: auto !important; }}
     .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; min-height: auto !important; }}
     .kpi-row {{ flex-wrap: wrap; gap: 10px; }}
     .kpi-card {{ min-width: 45%; flex: 1 1 45%; padding: 12px 8px; }}
@@ -1234,7 +1234,7 @@ function renderAll() {{
       title: 'State Distribution (Today)', margin: {{ l: 150, t: 40, r: 40, b: 20 }},
       xaxis: {{ title: 'Tickets', fixedrange: true }}, yaxis: {{ fixedrange: true, automargin: true }},
       height: 350, bargap: 0.15,
-    }}, {{ displayModeBar: 'hover' }});
+    }}, {{ displayModeBar: 'hover', responsive: true }});
   }} else {{
     stateEl.innerHTML = '<p style="padding:20px;color:#888;">No data for this time window.</p>';
   }}
@@ -1258,7 +1258,7 @@ function renderAll() {{
       yaxis: {{ fixedrange: true, automargin: true }},
       showlegend: false, bargap: 0.15,
       height: Math.max(550, resAllSorted.length * 35 + 80),
-    }}, {{ displayModeBar: 'hover' }});
+    }}, {{ displayModeBar: 'hover', responsive: true }});
   }} else {{
     resAllEl.innerHTML = '<p style="padding:20px;color:#888;">No resolved tickets in this time window.</p>';
   }}
@@ -1283,7 +1283,7 @@ function renderAll() {{
       yaxis: {{ fixedrange: true, automargin: true }},
       showlegend: false, bargap: 0.15,
       height: Math.max(550, resTodaySorted.length * 35 + 80),
-    }}, {{ displayModeBar: 'hover' }});
+    }}, {{ displayModeBar: 'hover', responsive: true }});
   }} else {{
     resTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No today-created tickets resolved yet.</p>';
   }}
@@ -1309,7 +1309,7 @@ function renderAll() {{
       height: Math.max(550, svcAllAgents.length*30+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
-    }}, {{displayModeBar:'hover'}});
+    }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     svcAllEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
@@ -1336,7 +1336,7 @@ function renderAll() {{
       height: Math.max(550, svcTodayAgents.length*30+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
-    }}, {{displayModeBar:'hover'}});
+    }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     svcTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
@@ -1384,7 +1384,7 @@ function renderAll() {{
       textinfo:'label+percent entry', branchvalues:'total',
     }}], {{
       title:"Today's Category \\u2192 Subcategory", margin:{{t:40,b:20}}, height:450,
-    }}, {{displayModeBar:'hover'}});
+    }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     sunEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
   }}
@@ -1423,7 +1423,7 @@ function renderAll() {{
       xaxis:{{fixedrange:true,title:'Hours'}},
       yaxis:{{fixedrange:true,automargin:true}},
       showlegend:false, bargap:0.15,
-    }}, {{displayModeBar:'hover'}});
+    }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     agGroupEl.innerHTML = '<p style="padding:20px;color:#888;">No time log data for this window.</p>';
   }}
