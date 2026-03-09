@@ -506,6 +506,11 @@ subcategory_options = "\n".join(f'<option value="{s}">{s}</option>' for s in sub
 
 # GitHub PAT for dispatch (embedded securely — only has actions scope)
 gh_pat = os.getenv("GH_PAT", "")
+anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
+
+# Prepare ticket data JSON for chat context (full report)
+import json as _json
+chat_tickets_json = _json.dumps(raw_df.to_dict(orient="records"), default=str)
 
 # ── Build HTML ───────────────────────────────────────────────────────────────
 generated_at = now_utc.strftime("%Y-%m-%d %H:%M UTC")
@@ -588,6 +593,29 @@ page_html = f"""<!DOCTYPE html>
     .sidebar .info-box {{ padding: 8px; }}
     .main {{ padding: 8px; }}
     .chart-box {{ padding: 6px; border-radius: 8px; }}
+  }}
+
+  /* Chat widget */
+  .chat-toggle {{ position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: #1a1a2e; color: #fff; border: none; font-size: 1.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; display: flex; align-items: center; justify-content: center; }}
+  .chat-toggle:hover {{ background: #2d2d5e; }}
+  .chat-panel {{ position: fixed; bottom: 90px; right: 24px; width: 400px; max-height: 500px; background: #fff; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); z-index: 1000; display: none; flex-direction: column; overflow: hidden; }}
+  .chat-panel.open {{ display: flex; }}
+  .chat-header {{ background: #1a1a2e; color: #fff; padding: 14px 16px; font-size: 0.95rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }}
+  .chat-header button {{ background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; }}
+  .chat-messages {{ flex: 1; overflow-y: auto; padding: 12px; max-height: 350px; font-size: 0.85rem; }}
+  .chat-msg {{ margin-bottom: 10px; line-height: 1.4; }}
+  .chat-msg.user {{ text-align: right; }}
+  .chat-msg .bubble {{ display: inline-block; padding: 8px 12px; border-radius: 12px; max-width: 85%; text-align: left; white-space: pre-wrap; }}
+  .chat-msg.user .bubble {{ background: #636EFA; color: #fff; }}
+  .chat-msg.assistant .bubble {{ background: #f0f0f0; color: #1a1a2e; }}
+  .chat-input-row {{ display: flex; border-top: 1px solid #e0e0e0; padding: 8px; gap: 8px; }}
+  .chat-input-row input {{ flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; }}
+  .chat-input-row button {{ padding: 8px 16px; background: #1a1a2e; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }}
+  .chat-input-row button:hover {{ background: #2d2d5e; }}
+  .chat-typing {{ padding: 8px 12px; font-size: 0.8rem; color: #888; font-style: italic; }}
+  @media (max-width: 900px) {{
+    .chat-panel {{ width: calc(100% - 32px); right: 16px; bottom: 80px; }}
+    .chat-toggle {{ bottom: 16px; right: 16px; }}
   }}
 </style>
 </head>
@@ -863,7 +891,94 @@ function filterTable() {{
     row.style.display = (matchSearch && matchState && matchPriority && matchCategory && matchSubcategory && matchTime) ? '' : 'none';
   }});
 }}
+
+// ── Chat Widget ──
+const ANTHROPIC_KEY = '{anthropic_key}';
+const CHAT_DATA = {chat_tickets_json};
+const chatHistory = [];
+
+function toggleChat() {{
+  document.getElementById('chatPanel').classList.toggle('open');
+  document.getElementById('chatInput').focus();
+}}
+
+function addChatMsg(role, text) {{
+  const msgs = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + role;
+  div.innerHTML = '<div class="bubble">' + text.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>') + '</div>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}}
+
+async function sendChat() {{
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  addChatMsg('user', msg);
+
+  chatHistory.push({{ role: 'user', content: msg }});
+
+  const typing = document.getElementById('chatTyping');
+  typing.style.display = 'block';
+
+  try {{
+    const systemPrompt = 'You are an IT ticket data analyst. You have access to the following ticket data (JSON array). Answer questions concisely based on this data. Today is {today}. Data covers {start_date} to {today}.\\n\\nTicket data:\\n' + JSON.stringify(CHAT_DATA.slice(0, 200));
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {{
+      method: 'POST',
+      headers: {{
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      }},
+      body: JSON.stringify({{
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: chatHistory,
+      }})
+    }});
+
+    const data = await resp.json();
+    typing.style.display = 'none';
+
+    if (data.content && data.content[0]) {{
+      const reply = data.content[0].text;
+      chatHistory.push({{ role: 'assistant', content: reply }});
+      addChatMsg('assistant', reply);
+    }} else if (data.error) {{
+      addChatMsg('assistant', 'Error: ' + data.error.message);
+    }}
+  }} catch (e) {{
+    typing.style.display = 'none';
+    addChatMsg('assistant', 'Error: ' + e.message);
+  }}
+}}
+
+document.addEventListener('keydown', function(e) {{
+  if (e.key === 'Enter' && document.activeElement.id === 'chatInput') sendChat();
+}});
 </script>
+
+<!-- Chat Widget -->
+<button class="chat-toggle" onclick="toggleChat()" title="Chat with data">&#128172;</button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <span>Chat with Ticket Data</span>
+    <button onclick="toggleChat()">&times;</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg assistant"><div class="bubble">Hi! I can help you analyze the ticket data. Ask me anything about tickets, agents, categories, or trends.</div></div>
+  </div>
+  <div class="chat-typing" id="chatTyping" style="display:none;">Thinking...</div>
+  <div class="chat-input-row">
+    <input type="text" id="chatInput" placeholder="Ask about ticket data...">
+    <button onclick="sendChat()">Send</button>
+  </div>
+</div>
 
 </body>
 </html>"""
@@ -1005,6 +1120,29 @@ shift_html = f"""<!DOCTYPE html>
     .sidebar .info-box {{ padding: 8px; }}
     .main {{ padding: 8px; }}
     .chart-box {{ padding: 6px; border-radius: 8px; }}
+  }}
+
+  /* Chat widget */
+  .chat-toggle {{ position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: #1a1a2e; color: #fff; border: none; font-size: 1.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; display: flex; align-items: center; justify-content: center; }}
+  .chat-toggle:hover {{ background: #2d2d5e; }}
+  .chat-panel {{ position: fixed; bottom: 90px; right: 24px; width: 400px; max-height: 500px; background: #fff; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); z-index: 1000; display: none; flex-direction: column; overflow: hidden; }}
+  .chat-panel.open {{ display: flex; }}
+  .chat-header {{ background: #1a1a2e; color: #fff; padding: 14px 16px; font-size: 0.95rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }}
+  .chat-header button {{ background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; }}
+  .chat-messages {{ flex: 1; overflow-y: auto; padding: 12px; max-height: 350px; font-size: 0.85rem; }}
+  .chat-msg {{ margin-bottom: 10px; line-height: 1.4; }}
+  .chat-msg.user {{ text-align: right; }}
+  .chat-msg .bubble {{ display: inline-block; padding: 8px 12px; border-radius: 12px; max-width: 85%; text-align: left; white-space: pre-wrap; }}
+  .chat-msg.user .bubble {{ background: #636EFA; color: #fff; }}
+  .chat-msg.assistant .bubble {{ background: #f0f0f0; color: #1a1a2e; }}
+  .chat-input-row {{ display: flex; border-top: 1px solid #e0e0e0; padding: 8px; gap: 8px; }}
+  .chat-input-row input {{ flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; }}
+  .chat-input-row button {{ padding: 8px 16px; background: #1a1a2e; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }}
+  .chat-input-row button:hover {{ background: #2d2d5e; }}
+  .chat-typing {{ padding: 8px 12px; font-size: 0.8rem; color: #888; font-style: italic; }}
+  @media (max-width: 900px) {{
+    .chat-panel {{ width: calc(100% - 32px); right: 16px; bottom: 80px; }}
+    .chat-toggle {{ bottom: 16px; right: 16px; }}
   }}
 </style>
 </head>
@@ -1560,6 +1698,81 @@ function exportAgentCSV() {{
 
 document.addEventListener('DOMContentLoaded', renderAll);
 </script>
+
+<script>
+const CHAT_KEY = '{anthropic_key}';
+const SHIFT_CHAT_DATA = DATA.tickets.slice(0, 200);
+const shiftChatHistory = [];
+
+function toggleChat() {{
+  document.getElementById('chatPanel').classList.toggle('open');
+  document.getElementById('chatInput').focus();
+}}
+
+function addChatMsg(role, text) {{
+  const msgs = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + role;
+  div.innerHTML = '<div class="bubble">' + text.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>') + '</div>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}}
+
+async function sendChat() {{
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  addChatMsg('user', msg);
+  shiftChatHistory.push({{ role: 'user', content: msg }});
+  const typing = document.getElementById('chatTyping');
+  typing.style.display = 'block';
+  try {{
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {{
+      method: 'POST',
+      headers: {{
+        'Content-Type': 'application/json',
+        'x-api-key': CHAT_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      }},
+      body: JSON.stringify({{
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: 'You are an IT ticket data analyst. The user is viewing a shift report. Here is the shift ticket data (JSON): ' + JSON.stringify(SHIFT_CHAT_DATA) + '. Answer questions about this data concisely.',
+        messages: shiftChatHistory,
+      }}),
+    }});
+    const data = await resp.json();
+    const reply = data.content?.[0]?.text || 'Sorry, I could not get a response.';
+    shiftChatHistory.push({{ role: 'assistant', content: reply }});
+    addChatMsg('assistant', reply);
+  }} catch (err) {{
+    addChatMsg('assistant', 'Error: ' + err.message);
+  }}
+  typing.style.display = 'none';
+}}
+
+document.addEventListener('keydown', function(e) {{
+  if (e.key === 'Enter' && document.activeElement.id === 'chatInput') sendChat();
+}});
+</script>
+
+<button class="chat-toggle" onclick="toggleChat()" title="Chat with data">&#128172;</button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <span>Chat with Shift Data</span>
+    <button onclick="toggleChat()">&times;</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg assistant"><div class="bubble">Hi! I can help you analyze the shift report data. Ask me anything about tickets, agents, categories, or trends.</div></div>
+  </div>
+  <div class="chat-typing" id="chatTyping" style="display:none;">Thinking...</div>
+  <div class="chat-input-row">
+    <input type="text" id="chatInput" placeholder="Ask about shift data...">
+    <button onclick="sendChat()">Send</button>
+  </div>
+</div>
 
 </body>
 </html>"""
