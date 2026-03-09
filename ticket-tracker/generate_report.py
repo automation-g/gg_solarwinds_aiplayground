@@ -145,10 +145,10 @@ if not agent_util_df.empty:
         fig_group.update_layout(
             xaxis_title="Hours", yaxis_title="",
             showlegend=False,
-            margin=dict(t=40, b=20),
+            margin=dict(t=40, b=50),
             height=max(250, len(group_chart_data) * 50 + 80),
-            xaxis=dict(fixedrange=True),
-            yaxis=dict(fixedrange=True),
+            xaxis=dict(fixedrange=True, automargin=True),
+            yaxis=dict(fixedrange=True, automargin=True),
         )
         chart_agent_group = pio.to_html(fig_group, **chart_opts)
 
@@ -765,6 +765,7 @@ page_html = f"""<!DOCTYPE html>
 </div>
 <div class="table-wrap">{agent_util_html if agent_util_html else '<p style="padding:20px;color:#888;">No time tracking data for today.</p>'}</div>
 
+<!-- Agent Time Log (All Tickets) — hidden for now to avoid confusion
 <h2>Agent Time Log (All Tickets)</h2>
 <p style="font-size:0.85rem;color:#666;margin-bottom:12px;">Time entries logged today across all tickets (including older ones).</p>
 {f'<div class="chart-full">{chart_all_agent_group}</div>' if chart_all_agent_group else ''}
@@ -778,6 +779,7 @@ page_html = f"""<!DOCTYPE html>
   <span style="font-size:0.8rem;color:#888;align-self:center;">Hold Ctrl/Cmd to select multiple groups. No selection = All.</span>
 </div>
 <div class="table-wrap">{all_agent_util_html if all_agent_util_html else '<p style="padding:20px;color:#888;">No time log data for today.</p>'}</div>
+-->
 
 </div><!-- end .main -->
 
@@ -1038,18 +1040,21 @@ for tt in time_tracks:
         "created_at": tt.get("created_at", ""),
     })
 
-# Agent assignments including Internal tickets (for Agent Utilization only)
-shift_agent_assignments = {}
+# All ticket assignments including Internal (for Agent Utilization window filtering)
+shift_all_assignments = []
 for r in today_detailed:
     assignee = safe_get(r, "assignee", "name")
     if assignee:
-        shift_agent_assignments[assignee] = shift_agent_assignments.get(assignee, 0) + 1
+        shift_all_assignments.append({
+            "assignee": assignee,
+            "created_at": r.get("created_at", ""),
+        })
 
 shift_json = json.dumps({
     "tickets": shift_tickets,
     "resolutions": shift_resolutions,
     "time_logs": shift_time_logs,
-    "agent_assignments": shift_agent_assignments,
+    "all_assignments": shift_all_assignments,
     "agent_groups": dict(agent_group_map),
     "today": today_str,
 }, default=str)
@@ -1570,11 +1575,11 @@ function renderAll() {{
     agentTime[c].minutes += t.minutes;
     agentTime[c].entries++;
   }});
-  // Ticket assignments from all today's tickets incl. Internal (matches full report)
-  const assignments = DATA.agent_assignments || {{}};
-  Object.entries(assignments).forEach(([agent, count]) => {{
+  // Ticket assignments incl. Internal, filtered by time window
+  (DATA.all_assignments || []).filter(a => inWindow(a.created_at, w.startMins, w.endMins)).forEach(a => {{
+    const agent = a.assignee;
     if (!agentTime[agent]) agentTime[agent] = {{ minutes:0, entries:0, tickets_assigned:0, group: DATA.agent_groups[agent]||'' }};
-    agentTime[agent].tickets_assigned = count;
+    agentTime[agent].tickets_assigned++;
   }});
   const agentEntries = Object.entries(agentTime).sort((a,b) => b[1].minutes - a[1].minutes);
 
@@ -1596,9 +1601,9 @@ function renderAll() {{
       marker:{{ color: groupEntries.map((_,i) => colors[i%colors.length]) }},
     }}], {{
       title:'Time Logged by Group (Today)',
-      margin:{{t:40,b:20,l:10,r:40}},
+      margin:{{t:40,b:50,l:10,r:40}},
       height: Math.max(300, groupEntries.length*50+80),
-      xaxis:{{fixedrange:true,title:'Hours'}},
+      xaxis:{{fixedrange:true,title:'Hours',automargin:true}},
       yaxis:{{fixedrange:true,automargin:true}},
       showlegend:false, bargap:0.15,
     }}, {{displayModeBar:'hover', responsive:true}});
