@@ -1173,6 +1173,7 @@ shift_html = f"""<!DOCTYPE html>
   </div>
 
   <button class="btn" onclick="renderAll()" style="background:#7B68EE;">Apply Time Filter</button>
+  <button class="btn" onclick="resetToWholeDay()" style="background:#555;margin-top:8px;">Reset to Whole Day</button>
 
   <div class="section-label">Data Status</div>
   <div class="info-box">
@@ -1260,8 +1261,9 @@ shift_html = f"""<!DOCTYPE html>
 </div>
 <div class="table-wrap" id="rawTable"></div>
 
-<h2>Agent Utilization (Today)</h2>
-<div class="chart-full" id="chartAgentGroup" style="min-height:300px;"></div>
+<div style="background:#fff;border-radius:10px;padding:16px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-top:16px;">
+<h2 style="margin-top:0;">Agent Utilization (Today)</h2>
+<div id="chartAgentGroup" style="min-height:300px;"></div>
 <div style="margin-bottom:12px;margin-top:12px;">
   <button class="content-btn" onclick="exportAgentCSV()">Export CSV</button>
 </div>
@@ -1270,7 +1272,8 @@ shift_html = f"""<!DOCTYPE html>
   </select>
   <span style="font-size:0.8rem;color:#888;align-self:center;">Hold Ctrl/Cmd to select multiple groups. No selection = All.</span>
 </div>
-<div class="table-wrap" id="agentTable"></div>
+<div id="agentTable"></div>
+</div>
 
 </div><!-- end .main -->
 
@@ -1311,6 +1314,12 @@ function getWindow() {{
   const startMins = parseInt(s[0]) * 60 + parseInt(s[1]);
   const endMins = parseInt(e[0]) * 60 + parseInt(e[1]);
   return {{ startMins, endMins, startH: parseInt(s[0]), startM: parseInt(s[1]), endH: parseInt(e[0]), endM: parseInt(e[1]) }};
+}}
+
+function resetToWholeDay() {{
+  document.getElementById('shiftStart').value = '00:00';
+  document.getElementById('shiftEnd').value = '23:59';
+  renderAll();
 }}
 
 function fmtAmPm(h, m) {{
