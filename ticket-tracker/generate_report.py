@@ -1036,18 +1036,10 @@ for tt in time_tracks:
         "created_at": tt.get("created_at", ""),
     })
 
-# Prepare ticket assignment counts per agent (same as full report)
-shift_agent_assignments = {}
-for r in today_detailed:
-    assignee = safe_get(r, "assignee", "name")
-    if assignee:
-        shift_agent_assignments[assignee] = shift_agent_assignments.get(assignee, 0) + 1
-
 shift_json = json.dumps({
     "tickets": shift_tickets,
     "resolutions": shift_resolutions,
     "time_logs": shift_time_logs,
-    "agent_assignments": shift_agent_assignments,
     "agent_groups": dict(agent_group_map),
     "today": today_str,
 }, default=str)
@@ -1559,11 +1551,13 @@ function renderAll() {{
     agentTime[c].minutes += t.minutes;
     agentTime[c].entries++;
   }});
-  // Add ticket assignment counts (same data as full report)
-  const assignments = DATA.agent_assignments || {{}};
-  Object.entries(assignments).forEach(([agent, count]) => {{
-    if (!agentTime[agent]) agentTime[agent] = {{ minutes:0, entries:0, tickets_assigned:0, group: DATA.agent_groups[agent]||'' }};
-    agentTime[agent].tickets_assigned = count;
+  // Count tickets assigned within the shift window
+  tickets.forEach(t => {{
+    const a = t.assignee;
+    if (a) {{
+      if (!agentTime[a]) agentTime[a] = {{ minutes:0, entries:0, tickets_assigned:0, group: DATA.agent_groups[a]||'' }};
+      agentTime[a].tickets_assigned++;
+    }}
   }});
   const agentEntries = Object.entries(agentTime).sort((a,b) => b[1].minutes - a[1].minutes);
 
