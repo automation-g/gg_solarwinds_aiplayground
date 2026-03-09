@@ -1239,10 +1239,12 @@ shift_html = f"""<!DOCTYPE html>
   <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
 </div>
 
-<h2>Subcategory Breakdown (Today)</h2>
+<div style="background:#fff;border-radius:10px;padding:16px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-top:16px;">
+<h2 style="margin-top:0;">Subcategory Breakdown (Today)</h2>
 <div class="charts-row">
-  <div class="chart-box subcat-table-scroll" id="subcatTable"></div>
-  <div class="chart-box subcat-chart" id="chartSunburst"></div>
+  <div class="subcat-table-scroll" id="subcatTable"></div>
+  <div class="subcat-chart" id="chartSunburst"></div>
+</div>
 </div>
 
 <h2>Raw Tickets</h2>
