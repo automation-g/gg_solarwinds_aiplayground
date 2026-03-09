@@ -1057,13 +1057,15 @@ shift_html = f"""<!DOCTYPE html>
 <h2>Today's Summary <span id="timeBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
 <div class="kpi-row">
   <div class="kpi-card"><div class="label">Raised</div><div class="value" id="kpiRaised">-</div></div>
-  <div class="kpi-card"><div class="label">Incidents</div><div class="value" id="kpiIncidents">-</div></div>
-  <div class="kpi-card"><div class="label">Service Requests</div><div class="value" id="kpiSvcReq">-</div></div>
   <div class="kpi-card"><div class="label">Closed</div><div class="value" id="kpiClosed">-</div></div>
   <div class="kpi-card"><div class="label">Resolved</div><div class="value" id="kpiResolved">-</div></div>
+  <div class="kpi-card"><div class="label">Still Open</div><div class="value" id="kpiOpen">-</div></div>
+</div>
+<div class="kpi-row" style="margin-top:8px;">
+  <div class="kpi-card"><div class="label">Incidents</div><div class="value" id="kpiIncidents">-</div></div>
+  <div class="kpi-card"><div class="label">Service Requests</div><div class="value" id="kpiSvcReq">-</div></div>
   <div class="kpi-card"><div class="label">Resolved Incidents</div><div class="value" id="kpiResInc">-</div></div>
   <div class="kpi-card"><div class="label">Resolved SVC Requests</div><div class="value" id="kpiResSvc">-</div></div>
-  <div class="kpi-card"><div class="label">Still Open</div><div class="value" id="kpiOpen">-</div></div>
 </div>
 
 <h2>Charts</h2>
@@ -1231,7 +1233,7 @@ function renderAll() {{
   const resToday = resInWindow;
 
   document.getElementById('sidebarTickets').textContent = raised;
-  document.getElementById('sidebarResolved').textContent = resInWindow.length;
+  document.getElementById('sidebarResolved').textContent = closed + resolved;
 
   // ── State Distribution ──
   const stateCounts = countBy(tickets, 'state');
