@@ -43,6 +43,7 @@ jobs:
           SOLARWINDS_API_TOKEN: ${{ secrets.SOLARWINDS_API_TOKEN }}
           SOLARWINDS_REGION: ${{ secrets.SOLARWINDS_REGION }}
           GH_PAT: ${{ secrets.GH_PAT }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           DAYS_BACK: ${{ inputs.days_back || '7' }}
         run: python generate_report.py
 
