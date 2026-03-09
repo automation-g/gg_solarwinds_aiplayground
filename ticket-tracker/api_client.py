@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
@@ -25,7 +26,15 @@ HEADERS = {
 
 
 def _get(path: str, params: dict[str, Any] | None = None) -> httpx.Response:
-    resp = httpx.get(f"{BASE_URL}{path}", headers=HEADERS, params=params, timeout=30.0)
+    for attempt in range(5):
+        resp = httpx.get(f"{BASE_URL}{path}", headers=HEADERS, params=params, timeout=30.0)
+        if resp.status_code == 429:
+            wait = int(resp.headers.get("Retry-After", 60))
+            print(f"  Rate limited, waiting {wait}s (attempt {attempt+1}/5)...")
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        return resp
     resp.raise_for_status()
     return resp
 

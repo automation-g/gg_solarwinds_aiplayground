@@ -1027,19 +1027,27 @@ for r in resolved_today_list:
         "state": str(state_val).strip(),
     })
 
-# Prepare time log data
+# Prepare time log data (use same source as full report: time_tracks from today's tickets)
 shift_time_logs = []
-for tt in todays_logs:
+for tt in time_tracks:
     shift_time_logs.append({
         "creator": tt.get("creator", {}).get("name", "Unknown"),
         "minutes": tt.get("minutes", 0),
         "created_at": tt.get("created_at", ""),
     })
 
+# Prepare ticket assignment counts per agent (same as full report)
+shift_agent_assignments = {}
+for r in today_detailed:
+    assignee = safe_get(r, "assignee", "name")
+    if assignee:
+        shift_agent_assignments[assignee] = shift_agent_assignments.get(assignee, 0) + 1
+
 shift_json = json.dumps({
     "tickets": shift_tickets,
     "resolutions": shift_resolutions,
     "time_logs": shift_time_logs,
+    "agent_assignments": shift_agent_assignments,
     "agent_groups": dict(agent_group_map),
     "today": today_str,
 }, default=str)
@@ -1547,9 +1555,15 @@ function renderAll() {{
   const agentTime = {{}};
   timeLogs.forEach(t => {{
     const c = t.creator;
-    if (!agentTime[c]) agentTime[c] = {{ minutes:0, entries:0, group: DATA.agent_groups[c]||'' }};
+    if (!agentTime[c]) agentTime[c] = {{ minutes:0, entries:0, tickets_assigned:0, group: DATA.agent_groups[c]||'' }};
     agentTime[c].minutes += t.minutes;
     agentTime[c].entries++;
+  }});
+  // Add ticket assignment counts (same data as full report)
+  const assignments = DATA.agent_assignments || {{}};
+  Object.entries(assignments).forEach(([agent, count]) => {{
+    if (!agentTime[agent]) agentTime[agent] = {{ minutes:0, entries:0, tickets_assigned:0, group: DATA.agent_groups[agent]||'' }};
+    agentTime[agent].tickets_assigned = count;
   }});
   const agentEntries = Object.entries(agentTime).sort((a,b) => b[1].minutes - a[1].minutes);
 
@@ -1584,10 +1598,10 @@ function renderAll() {{
   // Agent table
   const agentTableEl = document.getElementById('agentTable');
   if (agentEntries.length) {{
-    let html = '<table class="data-table" id="agent-util-shift"><thead><tr><th>Group</th><th>Agent</th><th>Time Logged</th><th>Entries</th></tr></thead><tbody>';
+    let html = '<table class="data-table" id="agent-util-shift"><thead><tr><th>Group</th><th>Agent</th><th>Tickets Assigned</th><th>Time Logged</th><th>Entries</th></tr></thead><tbody>';
     agentEntries.forEach(([a,d]) => {{
       const h = Math.floor(d.minutes/60), m = d.minutes%60;
-      html += '<tr><td>'+(d.group||'')+'</td><td>'+a+'</td><td>'+h+'h '+m+'m</td><td>'+d.entries+'</td></tr>';
+      html += '<tr><td>'+(d.group||'')+'</td><td>'+a+'</td><td>'+d.tickets_assigned+'</td><td>'+(d.minutes>0 ? h+'h '+m+'m' : '-')+'</td><td>'+d.entries+'</td></tr>';
     }});
     html += '</tbody></table>';
     agentTableEl.innerHTML = html;
