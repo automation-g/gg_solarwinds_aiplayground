@@ -339,11 +339,11 @@ if svc_inc_all_rows:
     fig_svc_all.update_traces(textposition="inside", textfont_color="white")
     fig_svc_all.update_layout(
         xaxis_title="Tickets", yaxis_title="",
-        margin=dict(l=150, t=60, r=30, b=30),
+        margin=dict(l=150, t=80, r=30, b=30),
         height=max(350, len(agent_order_all) * 30 + 80),
         xaxis=dict(fixedrange=True),
         yaxis=dict(fixedrange=True, automargin=True),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend=dict(orientation="h", yanchor="bottom", y=1.12, xanchor="right", x=1),
     )
     chart_svc_inc_all = pio.to_html(fig_svc_all, **chart_opts, default_height="100%")
 
@@ -372,11 +372,11 @@ if svc_inc_created_today_rows:
     fig_svc_ct.update_traces(textposition="inside", textfont_color="white")
     fig_svc_ct.update_layout(
         xaxis_title="Tickets", yaxis_title="",
-        margin=dict(l=150, t=60, r=30, b=30),
+        margin=dict(l=150, t=80, r=30, b=30),
         height=max(350, len(agent_order_ct) * 30 + 80),
         xaxis=dict(fixedrange=True),
         yaxis=dict(fixedrange=True, automargin=True),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend=dict(orientation="h", yanchor="bottom", y=1.12, xanchor="right", x=1),
     )
     chart_svc_inc_created_today = pio.to_html(fig_svc_ct, **chart_opts, default_height="100%")
 
@@ -1057,8 +1057,12 @@ shift_html = f"""<!DOCTYPE html>
 <h2>Today's Summary <span id="timeBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
 <div class="kpi-row">
   <div class="kpi-card"><div class="label">Raised</div><div class="value" id="kpiRaised">-</div></div>
+  <div class="kpi-card"><div class="label">Incidents</div><div class="value" id="kpiIncidents">-</div></div>
+  <div class="kpi-card"><div class="label">Service Requests</div><div class="value" id="kpiSvcReq">-</div></div>
   <div class="kpi-card"><div class="label">Closed</div><div class="value" id="kpiClosed">-</div></div>
   <div class="kpi-card"><div class="label">Resolved</div><div class="value" id="kpiResolved">-</div></div>
+  <div class="kpi-card"><div class="label">Resolved Incidents</div><div class="value" id="kpiResInc">-</div></div>
+  <div class="kpi-card"><div class="label">Resolved SVC Requests</div><div class="value" id="kpiResSvc">-</div></div>
   <div class="kpi-card"><div class="label">Still Open</div><div class="value" id="kpiOpen">-</div></div>
 </div>
 
@@ -1206,9 +1210,18 @@ function renderAll() {{
   const closed = tickets.filter(t => (t.state||'').toLowerCase() === 'closed').length;
   const resolved = tickets.filter(t => (t.state||'').toLowerCase() === 'resolved').length;
   const stillOpen = tickets.filter(t => !['closed','resolved'].includes((t.state||'').toLowerCase())).length;
+  const incidents = tickets.filter(t => !t.is_service_request).length;
+  const svcRequests = tickets.filter(t => t.is_service_request).length;
+  const resolvedOrClosed = tickets.filter(t => ['closed','resolved'].includes((t.state||'').toLowerCase()));
+  const resInc = resolvedOrClosed.filter(t => !t.is_service_request).length;
+  const resSvc = resolvedOrClosed.filter(t => t.is_service_request).length;
   document.getElementById('kpiRaised').textContent = raised;
+  document.getElementById('kpiIncidents').textContent = incidents;
+  document.getElementById('kpiSvcReq').textContent = svcRequests;
   document.getElementById('kpiClosed').textContent = closed;
   document.getElementById('kpiResolved').textContent = resolved;
+  document.getElementById('kpiResInc').textContent = resInc;
+  document.getElementById('kpiResSvc').textContent = resSvc;
   document.getElementById('kpiOpen').textContent = stillOpen;
 
   // Resolutions: only tickets created TODAY in the window that are resolved/closed
@@ -1305,10 +1318,10 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)',
-      margin:{{l:150,t:60,r:30,b:30}},
+      margin:{{l:150,t:80,r:30,b:30}},
       height: Math.max(550, svcAllAgents.length*30+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
-      legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
+      legend:{{orientation:'h',yanchor:'bottom',y:1.12,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     svcAllEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
@@ -1332,10 +1345,10 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)',
-      margin:{{l:150,t:60,r:30,b:30}},
+      margin:{{l:150,t:80,r:30,b:30}},
       height: Math.max(550, svcTodayAgents.length*30+80),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
-      legend:{{orientation:'h',yanchor:'bottom',y:1.02,xanchor:'right',x:1}}, bargap:0.15,
+      legend:{{orientation:'h',yanchor:'bottom',y:1.12,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     svcTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
