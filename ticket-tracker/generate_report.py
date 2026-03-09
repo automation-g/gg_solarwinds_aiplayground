@@ -983,7 +983,7 @@ shift_html = f"""<!DOCTYPE html>
     body {{ flex-direction: column; }}
     .charts-row {{ flex-direction: column; }}
     .chart-box {{ min-width: 100% !important; width: 100% !important; flex: none !important; overflow: auto !important; }}
-    .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; min-height: auto !important; }}
+    .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }}
     .kpi-row {{ flex-wrap: wrap; gap: 10px; }}
     .kpi-card {{ min-width: 45%; flex: 1 1 45%; padding: 12px 8px; }}
     .kpi-card .value {{ font-size: 1.5rem; }}
