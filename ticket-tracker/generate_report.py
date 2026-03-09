@@ -339,11 +339,12 @@ if svc_inc_all_rows:
     fig_svc_all.update_traces(textposition="inside", textfont_color="white")
     fig_svc_all.update_layout(
         xaxis_title="Tickets", yaxis_title="",
-        margin=dict(l=150, t=80, r=30, b=30),
-        height=max(350, len(agent_order_all) * 30 + 80),
+        margin=dict(l=150, t=100, r=30, b=30),
+        height=max(350, len(agent_order_all) * 30 + 100),
         xaxis=dict(fixedrange=True),
         yaxis=dict(fixedrange=True, automargin=True),
-        legend=dict(orientation="h", yanchor="bottom", y=1.12, xanchor="right", x=1),
+        title=dict(y=0.98, yanchor="top"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.06, xanchor="right", x=1),
     )
     chart_svc_inc_all = pio.to_html(fig_svc_all, **chart_opts, default_height="100%")
 
@@ -372,11 +373,12 @@ if svc_inc_created_today_rows:
     fig_svc_ct.update_traces(textposition="inside", textfont_color="white")
     fig_svc_ct.update_layout(
         xaxis_title="Tickets", yaxis_title="",
-        margin=dict(l=150, t=80, r=30, b=30),
-        height=max(350, len(agent_order_ct) * 30 + 80),
+        margin=dict(l=150, t=100, r=30, b=30),
+        height=max(350, len(agent_order_ct) * 30 + 100),
         xaxis=dict(fixedrange=True),
         yaxis=dict(fixedrange=True, automargin=True),
-        legend=dict(orientation="h", yanchor="bottom", y=1.12, xanchor="right", x=1),
+        title=dict(y=0.98, yanchor="top"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.06, xanchor="right", x=1),
     )
     chart_svc_inc_created_today = pio.to_html(fig_svc_ct, **chart_opts, default_height="100%")
 
@@ -1457,11 +1459,11 @@ function renderAll() {{
       {{ type:'bar', orientation:'h', y: svcAllAgents.map(e=>e[0]), x: svcAllAgents.map(e=>e[1].inc),
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
-      barmode:'stack', title:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)',
-      margin:{{l:150,t:80,r:30,b:30}},
-      height: Math.max(550, svcAllAgents.length*30+80),
+      barmode:'stack', title:{{text:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)',y:0.98,yanchor:'top'}},
+      margin:{{l:150,t:100,r:30,b:30}},
+      height: Math.max(550, svcAllAgents.length*30+100),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
-      legend:{{orientation:'h',yanchor:'bottom',y:1.12,xanchor:'right',x:1}}, bargap:0.15,
+      legend:{{orientation:'h',yanchor:'bottom',y:1.06,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     svcAllEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
@@ -1484,11 +1486,11 @@ function renderAll() {{
       {{ type:'bar', orientation:'h', y: svcTodayAgents.map(e=>e[0]), x: svcTodayAgents.map(e=>e[1].inc),
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
-      barmode:'stack', title:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)',
-      margin:{{l:150,t:80,r:30,b:30}},
-      height: Math.max(550, svcTodayAgents.length*30+80),
+      barmode:'stack', title:{{text:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)',y:0.98,yanchor:'top'}},
+      margin:{{l:150,t:100,r:30,b:30}},
+      height: Math.max(550, svcTodayAgents.length*30+100),
       xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
-      legend:{{orientation:'h',yanchor:'bottom',y:1.12,xanchor:'right',x:1}}, bargap:0.15,
+      legend:{{orientation:'h',yanchor:'bottom',y:1.06,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     svcTodayEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
