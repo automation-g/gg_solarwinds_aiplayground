@@ -224,9 +224,9 @@ if not all_agent_util_df.empty:
         fig_all_group.update_layout(
             xaxis_title="Hours", yaxis_title="",
             showlegend=False,
-            margin=dict(t=40, b=20),
+            margin=dict(t=40, b=50),
             height=max(250, len(all_group_chart_data) * 50 + 80),
-            xaxis=dict(fixedrange=True),
+            xaxis=dict(fixedrange=True, automargin=True),
             yaxis=dict(fixedrange=True),
         )
         chart_all_agent_group = pio.to_html(fig_all_group, **chart_opts)
@@ -278,8 +278,8 @@ if res_by_agent:
     fig_res_agent.update_layout(
         xaxis_title="Resolved Tickets", yaxis_title="",
         showlegend=False, coloraxis_showscale=False,
-        margin=dict(l=150, t=40, r=30, b=30),
-        xaxis=dict(fixedrange=True),
+        margin=dict(l=150, t=40, r=30, b=50),
+        xaxis=dict(fixedrange=True, automargin=True),
         yaxis=dict(fixedrange=True, automargin=True),
     )
     chart_resolution_agent = pio.to_html(fig_res_agent, **chart_opts, default_height="100%")
@@ -309,8 +309,8 @@ if res_today_only:
     fig_res_today.update_layout(
         xaxis_title="Resolved Tickets", yaxis_title="",
         showlegend=False, coloraxis_showscale=False,
-        margin=dict(l=150, t=40, r=30, b=30),
-        xaxis=dict(fixedrange=True),
+        margin=dict(l=150, t=40, r=30, b=50),
+        xaxis=dict(fixedrange=True, automargin=True),
         yaxis=dict(fixedrange=True, automargin=True),
     )
     chart_resolution_today_only = pio.to_html(fig_res_today, **chart_opts, default_height="100%")
@@ -428,7 +428,7 @@ state_counts = df[df["Date"] == today]["State"].value_counts().reset_index()
 state_counts.columns = ["State", "Count"]
 fig_state = px.bar(state_counts, x="Count", y="State", orientation="h", title="State Distribution (Today)", text="Count", color_discrete_sequence=["#EF553B"])
 fig_state.update_traces(textposition="outside")
-fig_state.update_layout(xaxis_title="Tickets", yaxis_title="", margin=dict(t=40, b=20))
+fig_state.update_layout(xaxis_title="Tickets", yaxis_title="", margin=dict(t=40, b=50), xaxis=dict(automargin=True), yaxis=dict(automargin=True))
 chart_state = pio.to_html(fig_state, **chart_opts)
 
 # Subcategory breakdown (today)
@@ -458,7 +458,7 @@ if not df_today.empty:
 # Daily subcategory stacked bar
 daily_subcat = df[df["Subcategory"] != ""].groupby(["Date", "Subcategory"]).size().reset_index(name="Tickets").sort_values("Date")
 fig_daily_subcat = px.bar(daily_subcat, x="Date", y="Tickets", color="Subcategory", title="Daily Tickets by Subcategory", barmode="stack")
-fig_daily_subcat.update_layout(xaxis_title="", yaxis_title="Tickets", margin=dict(t=40, b=20), legend=dict(font=dict(size=10)))
+fig_daily_subcat.update_layout(xaxis_title="", yaxis_title="Tickets", margin=dict(t=40, b=50), xaxis=dict(automargin=True), legend=dict(font=dict(size=10)))
 chart_daily_subcat = pio.to_html(fig_daily_subcat, **chart_opts)
 
 # ── Daily breakdown table ────────────────────────────────────────────────────
@@ -1410,8 +1410,8 @@ function renderAll() {{
       text: stateEntries.map(e => String(e[1])), textposition: 'outside',
       marker: {{ color: '#EF553B' }},
     }}], {{
-      title: 'State Distribution (Today)', margin: {{ l: 150, t: 40, r: 40, b: 20 }},
-      xaxis: {{ title: 'Tickets', fixedrange: true }}, yaxis: {{ fixedrange: true, automargin: true }},
+      title: 'State Distribution (Today)', margin: {{ l: 150, t: 40, r: 40, b: 50 }},
+      xaxis: {{ title: 'Tickets', fixedrange: true, automargin: true }}, yaxis: {{ fixedrange: true, automargin: true }},
       height: 350, bargap: 0.15,
     }}, {{ displayModeBar: 'hover', responsive: true }});
   }} else {{
@@ -1432,8 +1432,8 @@ function renderAll() {{
       showlegend: false,
     }}], {{
       title: 'All Resolved/Closed in Window \\u2014 ' + resAll.length,
-      margin: {{ l: 150, t: 40, r: 30, b: 30 }},
-      xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
+      margin: {{ l: 150, t: 40, r: 30, b: 50 }},
+      xaxis: {{ title: 'Resolved Tickets', fixedrange: true, automargin: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
       showlegend: false, bargap: 0.15,
       height: Math.max(550, resAllSorted.length * 35 + 80),
@@ -1457,8 +1457,8 @@ function renderAll() {{
       showlegend: false,
     }}], {{
       title: "Today's Tickets Resolved/Closed \\u2014 " + ticketsResolved.length,
-      margin: {{ l: 150, t: 40, r: 30, b: 30 }},
-      xaxis: {{ title: 'Resolved Tickets', fixedrange: true }},
+      margin: {{ l: 150, t: 40, r: 30, b: 50 }},
+      xaxis: {{ title: 'Resolved Tickets', fixedrange: true, automargin: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
       showlegend: false, bargap: 0.15,
       height: Math.max(550, resTodaySorted.length * 35 + 80),
@@ -1484,9 +1484,9 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:{{text:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)',y:0.98,yanchor:'top'}},
-      margin:{{l:150,t:100,r:30,b:30}},
+      margin:{{l:150,t:100,r:30,b:50}},
       height: Math.max(550, svcAllAgents.length*30+100),
-      xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
+      xaxis:{{fixedrange:true,title:'Tickets',automargin:true}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.06,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
@@ -1511,9 +1511,9 @@ function renderAll() {{
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
       barmode:'stack', title:{{text:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)',y:0.98,yanchor:'top'}},
-      margin:{{l:150,t:100,r:30,b:30}},
+      margin:{{l:150,t:100,r:30,b:50}},
       height: Math.max(550, svcTodayAgents.length*30+100),
-      xaxis:{{fixedrange:true,title:'Tickets'}}, yaxis:{{fixedrange:true,automargin:true}},
+      xaxis:{{fixedrange:true,title:'Tickets',automargin:true}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.06,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
