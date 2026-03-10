@@ -1382,7 +1382,7 @@ function renderAll() {{
   const resolved = resolvedInWindow.filter(r => (r.state||'').toLowerCase() === 'resolved').length;
   const resInc = resolvedInWindow.filter(r => !r.is_service_request).length;
   const resSvc = resolvedInWindow.filter(r => r.is_service_request).length;
-  const stillOpen = raised - closed - resolved;
+  const stillOpen = Math.max(0, raised - closed - resolved);
 
   document.getElementById('kpiRaised').textContent = raised;
   document.getElementById('kpiIncidents').textContent = incidents;
