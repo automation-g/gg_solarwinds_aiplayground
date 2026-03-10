@@ -1371,16 +1371,20 @@ function renderAll() {{
   const tickets = DATA.tickets.filter(t => inWindow(t.created_at, w.startMins, w.endMins));
   currentTickets = tickets;
 
-  // KPIs — all based on tickets created in the window, counted by current state
+  // KPIs — Raised/Incidents/SVC by created_at; Closed/Resolved by resolved_at in window
   const raised = tickets.length;
-  const closed = tickets.filter(t => (t.state||'').toLowerCase() === 'closed').length;
-  const resolved = tickets.filter(t => (t.state||'').toLowerCase() === 'resolved').length;
-  const stillOpen = tickets.filter(t => !['closed','resolved'].includes((t.state||'').toLowerCase())).length;
   const incidents = tickets.filter(t => !t.is_service_request).length;
   const svcRequests = tickets.filter(t => t.is_service_request).length;
-  const resolvedOrClosed = tickets.filter(t => ['closed','resolved'].includes((t.state||'').toLowerCase()));
-  const resInc = resolvedOrClosed.filter(t => !t.is_service_request).length;
-  const resSvc = resolvedOrClosed.filter(t => t.is_service_request).length;
+
+  // Closed/Resolved: today's tickets resolved within the time window
+  const resolvedInWindow = DATA.resolutions.filter(r => inWindow(r.resolved_at, w.startMins, w.endMins) && r.created_at && r.created_at.includes(DATA.today));
+  const closed = resolvedInWindow.filter(r => (r.state||'').toLowerCase() === 'closed').length;
+  const resolved = resolvedInWindow.filter(r => (r.state||'').toLowerCase() === 'resolved').length;
+  const resInc = resolvedInWindow.filter(r => !r.is_service_request).length;
+  const resSvc = resolvedInWindow.filter(r => r.is_service_request).length;
+
+  // Still Open = tickets raised in window not yet resolved by end of window
+  const stillOpen = Math.max(0, raised - closed - resolved);
 
   document.getElementById('kpiRaised').textContent = raised;
   document.getElementById('kpiIncidents').textContent = incidents;
