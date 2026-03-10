@@ -279,7 +279,7 @@ if res_by_agent:
         xaxis_title="Resolved Tickets", yaxis_title="",
         showlegend=False, coloraxis_showscale=False,
         margin=dict(l=150, t=40, r=30, b=50),
-        xaxis=dict(fixedrange=True, automargin=True),
+        xaxis=dict(fixedrange=True, automargin=True, tickangle=-90),
         yaxis=dict(fixedrange=True, automargin=True),
     )
     chart_resolution_agent = pio.to_html(fig_res_agent, **chart_opts, default_height="100%")
@@ -310,7 +310,7 @@ if res_today_only:
         xaxis_title="Resolved Tickets", yaxis_title="",
         showlegend=False, coloraxis_showscale=False,
         margin=dict(l=150, t=40, r=30, b=50),
-        xaxis=dict(fixedrange=True, automargin=True),
+        xaxis=dict(fixedrange=True, automargin=True, tickangle=-90),
         yaxis=dict(fixedrange=True, automargin=True),
     )
     chart_resolution_today_only = pio.to_html(fig_res_today, **chart_opts, default_height="100%")
@@ -341,7 +341,7 @@ if svc_inc_all_rows:
         xaxis_title="Tickets", yaxis_title="",
         margin=dict(l=150, t=100, r=30, b=30),
         height=max(350, len(agent_order_all) * 30 + 100),
-        xaxis=dict(fixedrange=True),
+        xaxis=dict(fixedrange=True, tickangle=-90),
         yaxis=dict(fixedrange=True, automargin=True),
         title=dict(y=0.98, yanchor="top"),
         legend=dict(orientation="h", yanchor="bottom", y=1.06, xanchor="right", x=1),
@@ -375,7 +375,7 @@ if svc_inc_created_today_rows:
         xaxis_title="Tickets", yaxis_title="",
         margin=dict(l=150, t=100, r=30, b=30),
         height=max(350, len(agent_order_ct) * 30 + 100),
-        xaxis=dict(fixedrange=True),
+        xaxis=dict(fixedrange=True, tickangle=-90),
         yaxis=dict(fixedrange=True, automargin=True),
         title=dict(y=0.98, yanchor="top"),
         legend=dict(orientation="h", yanchor="bottom", y=1.06, xanchor="right", x=1),
@@ -765,8 +765,8 @@ page_html = f"""<!DOCTYPE html>
 </div>
 <div class="table-wrap">{agent_util_html if agent_util_html else '<p style="padding:20px;color:#888;">No time tracking data for today.</p>'}</div>
 
-<!-- Agent Time Log (All Tickets) — hidden for now to avoid confusion
-<h2>Agent Time Log (All Tickets)</h2>
+<hr style="border:none;border-top:1px solid #ddd;margin:32px 0;">
+<h2>Consolidated Ticket Overview (Today &amp; Prior Days)</h2>
 <p style="font-size:0.85rem;color:#666;margin-bottom:12px;">Time entries logged today across all tickets (including older ones).</p>
 {f'<div class="chart-full">{chart_all_agent_group}</div>' if chart_all_agent_group else ''}
 <div style="margin-bottom:12px;margin-top:12px;">
@@ -779,7 +779,6 @@ page_html = f"""<!DOCTYPE html>
   <span style="font-size:0.8rem;color:#888;align-self:center;">Hold Ctrl/Cmd to select multiple groups. No selection = All.</span>
 </div>
 <div class="table-wrap">{all_agent_util_html if all_agent_util_html else '<p style="padding:20px;color:#888;">No time log data for today.</p>'}</div>
--->
 
 </div><!-- end .main -->
 
