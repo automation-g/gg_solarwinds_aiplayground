@@ -1070,7 +1070,7 @@ shift_html = f"""<!DOCTYPE html>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; color: #1a1a2e; display: flex; min-height: 100vh; }}
+  body {{ font-family: Cambria, Georgia, 'Times New Roman', serif; background: #f8f9fa; color: #1a1a2e; display: flex; min-height: 100vh; }}
 
   /* Sidebar */
   .sidebar {{ width: 260px; background: #1a1a2e; color: #fff; padding: 24px 16px; flex-shrink: 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; }}
@@ -1224,32 +1224,32 @@ shift_html = f"""<!DOCTYPE html>
   <div class="kpi-card"><div class="label">Resolved SVC Requests</div><div class="value" id="kpiResSvc">-</div></div>
 </div>
 
-<h2>Charts <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
+<h2>Charts</h2>
 <div class="charts-row">
   <div class="chart-box" id="chartState" style="min-height:350px;"></div>
 </div>
 
-<h2>Resolutions by Agent (Today) <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
+<h2>Resolutions by Agent (Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
   <div class="chart-box" id="chartResAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
   <div class="chart-box" id="chartResToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
 </div>
 
-<h2>Service Request vs Incident (Resolved/Closed Today) <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
+<h2>Service Request vs Incident (Resolved/Closed Today)</h2>
 <div class="charts-row" style="align-items: stretch;">
   <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
   <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
 </div>
 
 <div style="background:#fff;border-radius:10px;padding:16px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-top:16px;">
-<h2 style="margin-top:0;">Subcategory Breakdown (Today) <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
+<h2 style="margin-top:0;">Subcategory Breakdown (Today)</h2>
 <div class="charts-row">
   <div class="subcat-table-scroll" id="subcatTable"></div>
   <div class="subcat-chart" id="chartSunburst"></div>
 </div>
 </div>
 
-<h2>Raw Tickets <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
+<h2>Raw Tickets</h2>
 <div style="margin-bottom:12px;">
   <button class="content-btn" onclick="exportCSV()">Export CSV</button>
 </div>
@@ -1271,7 +1271,7 @@ shift_html = f"""<!DOCTYPE html>
 <div class="table-wrap" id="rawTable"></div>
 
 <div style="background:#fff;border-radius:10px;padding:16px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-top:16px;">
-<h2 style="margin-top:0;">Agent Utilization (Today) <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
+<h2 style="margin-top:0;">Agent Utilization (Today)</h2>
 <div id="chartAgentGroup" style="min-height:300px;"></div>
 <div style="margin-bottom:12px;margin-top:12px;">
   <button class="content-btn" onclick="exportAgentCSV()">Export CSV</button>
@@ -1368,6 +1368,8 @@ let currentTickets = [];
 function renderAll() {{
   const w = getWindow();
   const twLabel = fmtAmPm(w.startH, w.startM) + ' - ' + fmtAmPm(w.endH, w.endM) + ' UAE';
+  const twSub = '<br><span style="font-size:10px;color:#888;">' + twLabel + '</span>';
+  const twFont = {{family:'Cambria, Georgia, serif'}};
   document.querySelectorAll('.twBadge').forEach(el => el.textContent = twLabel);
 
   // Filter tickets created in window
@@ -1419,7 +1421,7 @@ function renderAll() {{
       text: stateEntries.map(e => String(e[1])), textposition: 'outside',
       marker: {{ color: '#EF553B' }},
     }}], {{
-      title: {{text:'State Distribution (Today)<br><span style="font-size:11px;color:#888;">' + twLabel + '</span>'}}, margin: {{ l: 150, t: 60, r: 40, b: 50 }},
+      title: {{text:'State Distribution (Today)'+twSub,font:twFont}}, margin: {{ l: 150, t: 55, r: 40, b: 50 }},
       xaxis: {{ title: 'Tickets', fixedrange: true, automargin: true }}, yaxis: {{ fixedrange: true, automargin: true }},
       height: 350, bargap: 0.15,
     }}, {{ displayModeBar: 'hover', responsive: true }});
@@ -1440,7 +1442,7 @@ function renderAll() {{
       marker: {{ color: resAllSorted.map(e => gradientColor(e[1], resAllMax, BLUE_SCALE)) }},
       showlegend: false,
     }}], {{
-      title: {{text:'All Resolved/Closed in Window \\u2014 ' + resAll.length + '<br><span style="font-size:11px;color:#888;">' + twLabel + '</span>'}},
+      title: {{text:'All Resolved/Closed in Window \\u2014 '+resAll.length+twSub,font:twFont}},
       margin: {{ l: 150, t: 40, r: 30, b: 50 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true, automargin: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
@@ -1465,7 +1467,7 @@ function renderAll() {{
       marker: {{ color: resTodaySorted.map(e => gradientColor(e[1], resTodayMax, GREEN_SCALE)) }},
       showlegend: false,
     }}], {{
-      title: {{text:"Today's Tickets Resolved/Closed \\u2014 " + ticketsResolved.length + '<br><span style="font-size:11px;color:#888;">' + twLabel + '</span>'}},
+      title: {{text:"Today's Tickets Resolved/Closed \\u2014 "+ticketsResolved.length+twSub,font:twFont}},
       margin: {{ l: 150, t: 40, r: 30, b: 50 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true, automargin: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
@@ -1492,7 +1494,7 @@ function renderAll() {{
       {{ type:'bar', orientation:'h', y: svcAllAgents.map(e=>e[0]), x: svcAllAgents.map(e=>e[1].inc),
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
-      barmode:'stack', title:{{text:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)<br><span style="font-size:11px;color:#888;">'+twLabel+'</span>',y:0.98,yanchor:'top'}},
+      barmode:'stack', title:{{text:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)'+twSub,y:0.98,yanchor:'top',font:twFont}},
       margin:{{l:150,t:100,r:30,b:50}},
       height: Math.max(550, svcAllAgents.length*30+100),
       xaxis:{{fixedrange:true,title:'Tickets',automargin:true}}, yaxis:{{fixedrange:true,automargin:true}},
@@ -1519,7 +1521,7 @@ function renderAll() {{
       {{ type:'bar', orientation:'h', y: svcTodayAgents.map(e=>e[0]), x: svcTodayAgents.map(e=>e[1].inc),
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
-      barmode:'stack', title:{{text:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)<br><span style="font-size:11px;color:#888;">'+twLabel+'</span>',y:0.98,yanchor:'top'}},
+      barmode:'stack', title:{{text:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)'+twSub,y:0.98,yanchor:'top',font:twFont}},
       margin:{{l:150,t:100,r:30,b:50}},
       height: Math.max(550, svcTodayAgents.length*30+100),
       xaxis:{{fixedrange:true,title:'Tickets',automargin:true}}, yaxis:{{fixedrange:true,automargin:true}},
@@ -1571,7 +1573,7 @@ function renderAll() {{
       type:'sunburst', ids:ids, labels:labels, parents:parents, values:values,
       textinfo:'label+percent entry', branchvalues:'total',
     }}], {{
-      title:{{text:"Today's Category \\u2192 Subcategory<br><span style='font-size:11px;color:#888;'>"+twLabel+"</span>"}}, margin:{{t:60,b:20}}, height:450,
+      title:{{text:"Today's Category \\u2192 Subcategory"+twSub,font:twFont}}, margin:{{t:55,b:20}}, height:450,
     }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     sunEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
@@ -1611,7 +1613,7 @@ function renderAll() {{
       text: groupEntries.map(e=>(e[1]/60).toFixed(1)+'h'), textposition:'outside',
       marker:{{ color: groupEntries.map((_,i) => colors[i%colors.length]) }},
     }}], {{
-      title:{{text:'Time Logged by Group (Today)<br><span style="font-size:11px;color:#888;">'+twLabel+'</span>'}},
+      title:{{text:'Time Logged by Group (Today)'+twSub,font:twFont}},
       margin:{{t:40,b:50,l:10,r:40}},
       height: Math.max(300, groupEntries.length*50+80),
       xaxis:{{fixedrange:true,title:'Hours',automargin:true}},
