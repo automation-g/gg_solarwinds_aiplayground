@@ -1371,16 +1371,19 @@ function renderAll() {{
   const tickets = DATA.tickets.filter(t => inWindow(t.created_at, w.startMins, w.endMins));
   currentTickets = tickets;
 
-  // KPIs — all based on tickets created in the window only
+  // KPIs — Raised/Incidents/SVC by created_at; Closed/Resolved by resolved_at
   const raised = tickets.length;
-  const closed = tickets.filter(t => (t.state||'').toLowerCase() === 'closed').length;
-  const resolved = tickets.filter(t => (t.state||'').toLowerCase() === 'resolved').length;
-  const stillOpen = tickets.filter(t => !['closed','resolved'].includes((t.state||'').toLowerCase())).length;
   const incidents = tickets.filter(t => !t.is_service_request).length;
   const svcRequests = tickets.filter(t => t.is_service_request).length;
-  const resolvedOrClosed = tickets.filter(t => ['closed','resolved'].includes((t.state||'').toLowerCase()));
-  const resInc = resolvedOrClosed.filter(t => !t.is_service_request).length;
-  const resSvc = resolvedOrClosed.filter(t => t.is_service_request).length;
+  const stillOpen = tickets.filter(t => !['closed','resolved'].includes((t.state||'').toLowerCase())).length;
+
+  // Closed/Resolved counts based on when they were actually resolved within the window
+  const resolvedInWindow = DATA.resolutions.filter(r => inWindow(r.resolved_at, w.startMins, w.endMins));
+  const closed = resolvedInWindow.filter(r => (r.state||'').toLowerCase() === 'closed').length;
+  const resolved = resolvedInWindow.filter(r => (r.state||'').toLowerCase() === 'resolved').length;
+  const resInc = resolvedInWindow.filter(r => !r.is_service_request).length;
+  const resSvc = resolvedInWindow.filter(r => r.is_service_request).length;
+
   document.getElementById('kpiRaised').textContent = raised;
   document.getElementById('kpiIncidents').textContent = incidents;
   document.getElementById('kpiSvcReq').textContent = svcRequests;
@@ -1390,11 +1393,10 @@ function renderAll() {{
   document.getElementById('kpiResSvc').textContent = resSvc;
   document.getElementById('kpiOpen').textContent = stillOpen;
 
-  // Resolutions: only tickets created TODAY in the window that are resolved/closed
-  const resAll = DATA.resolutions.filter(r => inWindow(r.resolved_at, w.startMins, w.endMins));
+  // Resolutions: resolved within the time window
+  const resAll = resolvedInWindow;
   // Filter to only tickets created TODAY AND in the time window
-  const resInWindow = resAll.filter(r => r.created_at && r.created_at.includes(DATA.today) && inWindow(r.created_at, w.startMins, w.endMins));
-  const resToday = resInWindow;
+  const resToday = resAll.filter(r => r.created_at && r.created_at.includes(DATA.today) && inWindow(r.created_at, w.startMins, w.endMins));
 
   document.getElementById('sidebarTickets').textContent = raised;
   document.getElementById('sidebarResolved').textContent = closed + resolved;
