@@ -199,6 +199,24 @@ if not all_agent_util_df.empty:
 all_agent_groups = sorted(set(r["Group"] for r in all_agent_rows if r["Group"])) if all_agent_rows else []
 all_agent_group_options = "\n".join(f'<option value="{g}">{g}</option>' for g in all_agent_groups)
 
+# Build per-entry JSON for the filterable explorer (reuses already-fetched data, no extra API calls)
+import json as _json
+all_time_entries_json = []
+for tt in all_time_tracks:
+    creator = tt.get("creator", {}).get("name", "Unknown")
+    mins = tt.get("minutes", 0)
+    log_date = tt.get("created_at", "")[:10]
+    all_time_entries_json.append({
+        "date": log_date,
+        "group": agent_group_map.get(creator, ""),
+        "agent": creator,
+        "minutes": mins,
+    })
+explorer_agent_names = sorted(set(e["agent"] for e in all_time_entries_json if e["agent"]))
+explorer_agent_options = "\n".join(f'<option value="{html.escape(a)}">{html.escape(a)}</option>' for a in explorer_agent_names)
+explorer_group_names = sorted(set(e["group"] for e in all_time_entries_json if e["group"]))
+explorer_group_options = "\n".join(f'<option value="{html.escape(g)}">{html.escape(g)}</option>' for g in explorer_group_names)
+
 # Chart: Time logged per group (all tickets)
 chart_all_agent_group = ""
 if not all_agent_util_df.empty:
@@ -779,6 +797,106 @@ page_html = f"""<!DOCTYPE html>
   <span style="font-size:0.8rem;color:#888;align-self:center;">Hold Ctrl/Cmd to select multiple groups. No selection = All.</span>
 </div>
 <div class="table-wrap">{all_agent_util_html if all_agent_util_html else '<p style="padding:20px;color:#888;">No time log data for today.</p>'}</div>
+
+<hr style="border:none;border-top:1px solid #ddd;margin:32px 0;">
+<h2>Time Log Explorer</h2>
+<p style="font-size:0.85rem;color:#666;margin-bottom:12px;">Filter time entries by date range, group, and agent. Defaults to today.</p>
+<div class="filter-row" style="flex-wrap:wrap;gap:12px;">
+  <div style="display:flex;flex-direction:column;">
+    <label style="font-size:0.75rem;color:#888;margin-bottom:2px;">Date From</label>
+    <input type="date" id="explorerDateFrom" value="{today_str}" max="{today_str}" onchange="rebuildExplorer()" style="padding:6px;border:1px solid #ddd;border-radius:6px;font-size:0.85rem;">
+  </div>
+  <div style="display:flex;flex-direction:column;">
+    <label style="font-size:0.75rem;color:#888;margin-bottom:2px;">Date To</label>
+    <input type="date" id="explorerDateTo" value="{today_str}" max="{today_str}" onchange="rebuildExplorer()" style="padding:6px;border:1px solid #ddd;border-radius:6px;font-size:0.85rem;">
+  </div>
+  <div style="display:flex;flex-direction:column;">
+    <label style="font-size:0.75rem;color:#888;margin-bottom:2px;">Filter by Group</label>
+    <select id="explorerGroup" multiple onchange="rebuildExplorer()" style="min-width:200px;min-height:36px;padding:6px;">
+      {explorer_group_options}
+    </select>
+  </div>
+  <div style="display:flex;flex-direction:column;">
+    <label style="font-size:0.75rem;color:#888;margin-bottom:2px;">Filter by Agent</label>
+    <select id="explorerAgent" multiple onchange="rebuildExplorer()" style="min-width:200px;min-height:36px;padding:6px;">
+      {explorer_agent_options}
+    </select>
+  </div>
+  <span style="font-size:0.8rem;color:#888;align-self:flex-end;">Hold Ctrl/Cmd to select multiple. No selection = All.</span>
+</div>
+<div style="margin-bottom:12px;margin-top:12px;">
+  <a class="content-btn" id="explorerCsvBtn" href="#" download="time_log_explorer.csv">Export CSV</a>
+</div>
+<div class="table-wrap" id="explorerTableWrap"><p style="padding:20px;color:#888;">Select a date range and click filters to explore.</p></div>
+<script>
+var EXPLORER_DATA = {_json.dumps(all_time_entries_json)};
+function rebuildExplorer() {{
+  var dateFrom = document.getElementById('explorerDateFrom').value;
+  var dateTo = document.getElementById('explorerDateTo').value;
+  var selGroups = Array.from(document.getElementById('explorerGroup').selectedOptions).map(function(o){{return o.value;}});
+  var selAgents = Array.from(document.getElementById('explorerAgent').selectedOptions).map(function(o){{return o.value;}});
+
+  var filtered = EXPLORER_DATA.filter(function(e) {{
+    if (e.date < dateFrom || e.date > dateTo) return false;
+    if (selGroups.length > 0 && selGroups.indexOf(e.group) === -1) return false;
+    if (selAgents.length > 0 && selAgents.indexOf(e.agent) === -1) return false;
+    return true;
+  }});
+
+  // Aggregate by (date + agent)
+  var agg = {{}};
+  filtered.forEach(function(e) {{
+    var key = e.date + '||' + e.agent;
+    if (!agg[key]) agg[key] = {{date: e.date, group: e.group, agent: e.agent, minutes: 0, entries: 0}};
+    agg[key].minutes += e.minutes;
+    agg[key].entries += 1;
+  }});
+
+  var keys = Object.keys(agg).sort(function(a, b) {{
+    if (agg[b].date !== agg[a].date) return agg[b].date > agg[a].date ? 1 : -1;
+    return agg[b].minutes - agg[a].minutes;
+  }});
+
+  if (keys.length === 0) {{
+    document.getElementById('explorerTableWrap').innerHTML = '<p style="padding:20px;color:#888;">No time log data for selected filters.</p>';
+    updateExplorerCsv([]);
+    return;
+  }}
+
+  var rows = [];
+  keys.forEach(function(key) {{
+    var d = agg[key];
+    var hrs = Math.floor(d.minutes / 60);
+    var mins = d.minutes % 60;
+    rows.push({{date: d.date, group: d.group, agent: d.agent, time: hrs + 'h ' + mins + 'm', entries: d.entries}});
+  }});
+
+  var html = '<table class="data-table" id="explorer-table"><thead><tr><th>Date</th><th>Group</th><th>Agent</th><th>Time Logged</th><th>Entries</th></tr></thead><tbody>';
+  rows.forEach(function(r) {{
+    html += '<tr><td>' + r.date + '</td><td>' + r.group + '</td><td>' + r.agent + '</td><td>' + r.time + '</td><td>' + r.entries + '</td></tr>';
+  }});
+  html += '</tbody></table>';
+  document.getElementById('explorerTableWrap').innerHTML = html;
+  updateExplorerCsv(rows);
+}}
+
+function updateExplorerCsv(rows) {{
+  var csv = 'Date,Group,Agent,Time Logged,Entries\\n';
+  rows.forEach(function(r) {{
+    csv += r.date + ',"' + r.group + '","' + r.agent + '","' + r.time + '",' + r.entries + '\\n';
+  }});
+  var blob = new Blob([csv], {{type: 'text/csv'}});
+  var url = URL.createObjectURL(blob);
+  var btn = document.getElementById('explorerCsvBtn');
+  var dateFrom = document.getElementById('explorerDateFrom').value;
+  var dateTo = document.getElementById('explorerDateTo').value;
+  btn.href = url;
+  btn.download = 'time_log_' + dateFrom + '_to_' + dateTo + '.csv';
+}}
+
+// Auto-populate on load with today's data
+document.addEventListener('DOMContentLoaded', function() {{ rebuildExplorer(); }});
+</script>
 
 </div><!-- end .main -->
 
