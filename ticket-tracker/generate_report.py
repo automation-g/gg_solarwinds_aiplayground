@@ -1210,7 +1210,7 @@ shift_html = f"""<!DOCTYPE html>
 <!-- Main Content -->
 <div class="main">
 
-<h2>Today's Summary <span id="timeBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
+<h2>Today's Summary <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
 <div class="kpi-row">
   <div class="kpi-card"><div class="label">Raised</div><div class="value" id="kpiRaised">-</div></div>
   <div class="kpi-card"><div class="label">Closed</div><div class="value" id="kpiClosed">-</div></div>
@@ -1224,32 +1224,32 @@ shift_html = f"""<!DOCTYPE html>
   <div class="kpi-card"><div class="label">Resolved SVC Requests</div><div class="value" id="kpiResSvc">-</div></div>
 </div>
 
-<h2>Charts</h2>
+<h2>Charts <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
 <div class="charts-row">
   <div class="chart-box" id="chartState" style="min-height:350px;"></div>
 </div>
 
-<h2>Resolutions by Agent (Today)</h2>
+<h2>Resolutions by Agent (Today) <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
 <div class="charts-row" style="align-items: stretch;">
   <div class="chart-box" id="chartResAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
   <div class="chart-box" id="chartResToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
 </div>
 
-<h2>Service Request vs Incident (Resolved/Closed Today)</h2>
+<h2>Service Request vs Incident (Resolved/Closed Today) <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
 <div class="charts-row" style="align-items: stretch;">
   <div class="chart-box" id="chartSvcAll" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
   <div class="chart-box" id="chartSvcToday" style="min-width: 48%; flex: 1; height: 550px; overflow: auto;"></div>
 </div>
 
 <div style="background:#fff;border-radius:10px;padding:16px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-top:16px;">
-<h2 style="margin-top:0;">Subcategory Breakdown (Today)</h2>
+<h2 style="margin-top:0;">Subcategory Breakdown (Today) <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
 <div class="charts-row">
   <div class="subcat-table-scroll" id="subcatTable"></div>
   <div class="subcat-chart" id="chartSunburst"></div>
 </div>
 </div>
 
-<h2>Raw Tickets</h2>
+<h2>Raw Tickets <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
 <div style="margin-bottom:12px;">
   <button class="content-btn" onclick="exportCSV()">Export CSV</button>
 </div>
@@ -1271,7 +1271,7 @@ shift_html = f"""<!DOCTYPE html>
 <div class="table-wrap" id="rawTable"></div>
 
 <div style="background:#fff;border-radius:10px;padding:16px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-top:16px;">
-<h2 style="margin-top:0;">Agent Utilization (Today)</h2>
+<h2 style="margin-top:0;">Agent Utilization (Today) <span class="twBadge" style="display:inline-block;background:#7B68EE;color:#fff;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:600;"></span></h2>
 <div id="chartAgentGroup" style="min-height:300px;"></div>
 <div style="margin-bottom:12px;margin-top:12px;">
   <button class="content-btn" onclick="exportAgentCSV()">Export CSV</button>
@@ -1367,7 +1367,8 @@ let currentTickets = [];
 
 function renderAll() {{
   const w = getWindow();
-  document.getElementById('timeBadge').textContent = fmtAmPm(w.startH, w.startM) + ' - ' + fmtAmPm(w.endH, w.endM) + ' UAE';
+  const twLabel = fmtAmPm(w.startH, w.startM) + ' - ' + fmtAmPm(w.endH, w.endM) + ' UAE';
+  document.querySelectorAll('.twBadge').forEach(el => el.textContent = twLabel);
 
   // Filter tickets created in window
   const tickets = DATA.tickets.filter(t => inWindow(t.created_at, w.startMins, w.endMins));
