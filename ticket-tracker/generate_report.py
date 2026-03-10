@@ -1422,7 +1422,7 @@ function renderAll() {{
       marker: {{ color: '#EF553B' }},
     }}], {{
       title: {{text:'State Distribution (Today)'+twSub,font:twFont}}, margin: {{ l: 150, t: 40, r: 40, b: 50 }},
-      xaxis: {{ title: 'Tickets', fixedrange: true, automargin: true }}, yaxis: {{ fixedrange: true, automargin: true }},
+      xaxis: {{ title: 'Tickets', fixedrange: true, automargin: true, showticklabels: false }}, yaxis: {{ fixedrange: true, automargin: true }},
       height: 350, bargap: 0.15,
     }}, {{ displayModeBar: 'hover', responsive: true }});
   }} else {{
@@ -1444,7 +1444,7 @@ function renderAll() {{
     }}], {{
       title: {{text:'All Resolved/Closed in Window \\u2014 '+resAll.length+twSub,font:twFont}},
       margin: {{ l: 150, t: 40, r: 30, b: 50 }},
-      xaxis: {{ title: 'Resolved Tickets', fixedrange: true, automargin: true }},
+      xaxis: {{ title: 'Resolved Tickets', fixedrange: true, automargin: true, showticklabels: false }},
       yaxis: {{ fixedrange: true, automargin: true }},
       showlegend: false, bargap: 0.15,
       height: Math.max(550, resAllSorted.length * 35 + 80),
@@ -1469,7 +1469,7 @@ function renderAll() {{
     }}], {{
       title: {{text:"Today's Tickets Resolved/Closed \\u2014 "+ticketsResolved.length+twSub,font:twFont}},
       margin: {{ l: 150, t: 40, r: 30, b: 50 }},
-      xaxis: {{ title: 'Resolved Tickets', fixedrange: true, automargin: true }},
+      xaxis: {{ title: 'Resolved Tickets', fixedrange: true, automargin: true, showticklabels: false }},
       yaxis: {{ fixedrange: true, automargin: true }},
       showlegend: false, bargap: 0.15,
       height: Math.max(550, resTodaySorted.length * 35 + 80),
@@ -1497,7 +1497,7 @@ function renderAll() {{
       barmode:'stack', title:{{text:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)'+twSub,y:0.98,yanchor:'top',font:twFont}},
       margin:{{l:150,t:100,r:30,b:50}},
       height: Math.max(550, svcAllAgents.length*30+100),
-      xaxis:{{fixedrange:true,title:'Tickets',automargin:true}}, yaxis:{{fixedrange:true,automargin:true}},
+      xaxis:{{fixedrange:true,title:'Tickets',automargin:true,showticklabels:false}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.06,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
@@ -1524,7 +1524,7 @@ function renderAll() {{
       barmode:'stack', title:{{text:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)'+twSub,y:0.98,yanchor:'top',font:twFont}},
       margin:{{l:150,t:100,r:30,b:50}},
       height: Math.max(550, svcTodayAgents.length*30+100),
-      xaxis:{{fixedrange:true,title:'Tickets',automargin:true}}, yaxis:{{fixedrange:true,automargin:true}},
+      xaxis:{{fixedrange:true,title:'Tickets',automargin:true,showticklabels:false}}, yaxis:{{fixedrange:true,automargin:true}},
       legend:{{orientation:'h',yanchor:'bottom',y:1.06,xanchor:'right',x:1}}, bargap:0.15,
     }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
@@ -1616,7 +1616,7 @@ function renderAll() {{
       title:{{text:'Time Logged by Group (Today)'+twSub,font:twFont}},
       margin:{{t:40,b:50,l:10,r:40}},
       height: Math.max(300, groupEntries.length*50+80),
-      xaxis:{{fixedrange:true,title:'Hours',automargin:true}},
+      xaxis:{{fixedrange:true,title:'Hours',automargin:true,showticklabels:false}},
       yaxis:{{fixedrange:true,automargin:true}},
       showlegend:false, bargap:0.15,
     }}, {{displayModeBar:'hover', responsive:true}});
