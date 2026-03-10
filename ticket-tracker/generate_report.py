@@ -199,10 +199,16 @@ if not all_agent_util_df.empty:
 all_agent_groups = sorted(set(r["Group"] for r in all_agent_rows if r["Group"])) if all_agent_rows else []
 all_agent_group_options = "\n".join(f'<option value="{g}">{g}</option>' for g in all_agent_groups)
 
-# Build per-entry JSON for the filterable explorer (reuses already-fetched data, no extra API calls)
+# Build per-entry JSON for the filterable explorer
+# Reuse raw_with_internal (already fetched, full 7-day range) — fetch details + time tracks for all
 import json as _json
+print(f"Fetching details for all {len(raw_with_internal)} incidents (explorer)...")
+explorer_detailed = fetch_incidents_with_details(raw_with_internal)
+explorer_time_tracks = fetch_time_tracks(explorer_detailed)
+print(f"Got {len(explorer_time_tracks)} time track entries for explorer")
+
 all_time_entries_json = []
-for tt in all_time_tracks:
+for tt in explorer_time_tracks:
     creator = tt.get("creator", {}).get("name", "Unknown")
     mins = tt.get("minutes", 0)
     log_date = tt.get("created_at", "")[:10]
