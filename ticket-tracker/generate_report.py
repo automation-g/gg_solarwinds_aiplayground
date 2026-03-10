@@ -1419,7 +1419,7 @@ function renderAll() {{
       text: stateEntries.map(e => String(e[1])), textposition: 'outside',
       marker: {{ color: '#EF553B' }},
     }}], {{
-      title: 'State Distribution (Today)', margin: {{ l: 150, t: 40, r: 40, b: 50 }},
+      title: {{text:'State Distribution (Today)<br><span style="font-size:11px;color:#888;">' + twLabel + '</span>'}}, margin: {{ l: 150, t: 60, r: 40, b: 50 }},
       xaxis: {{ title: 'Tickets', fixedrange: true, automargin: true }}, yaxis: {{ fixedrange: true, automargin: true }},
       height: 350, bargap: 0.15,
     }}, {{ displayModeBar: 'hover', responsive: true }});
@@ -1440,7 +1440,7 @@ function renderAll() {{
       marker: {{ color: resAllSorted.map(e => gradientColor(e[1], resAllMax, BLUE_SCALE)) }},
       showlegend: false,
     }}], {{
-      title: 'All Resolved/Closed in Window \\u2014 ' + resAll.length,
+      title: {{text:'All Resolved/Closed in Window \\u2014 ' + resAll.length + '<br><span style="font-size:11px;color:#888;">' + twLabel + '</span>'}},
       margin: {{ l: 150, t: 40, r: 30, b: 50 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true, automargin: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
@@ -1465,7 +1465,7 @@ function renderAll() {{
       marker: {{ color: resTodaySorted.map(e => gradientColor(e[1], resTodayMax, GREEN_SCALE)) }},
       showlegend: false,
     }}], {{
-      title: "Today's Tickets Resolved/Closed \\u2014 " + ticketsResolved.length,
+      title: {{text:"Today's Tickets Resolved/Closed \\u2014 " + ticketsResolved.length + '<br><span style="font-size:11px;color:#888;">' + twLabel + '</span>'}},
       margin: {{ l: 150, t: 40, r: 30, b: 50 }},
       xaxis: {{ title: 'Resolved Tickets', fixedrange: true, automargin: true }},
       yaxis: {{ fixedrange: true, automargin: true }},
@@ -1492,7 +1492,7 @@ function renderAll() {{
       {{ type:'bar', orientation:'h', y: svcAllAgents.map(e=>e[0]), x: svcAllAgents.map(e=>e[1].inc),
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcAllAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
-      barmode:'stack', title:{{text:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)',y:0.98,yanchor:'top'}},
+      barmode:'stack', title:{{text:'All Resolved/Closed in Window \\u2014 SVC vs INC ('+resAll.length+' total)<br><span style="font-size:11px;color:#888;">'+twLabel+'</span>',y:0.98,yanchor:'top'}},
       margin:{{l:150,t:100,r:30,b:50}},
       height: Math.max(550, svcAllAgents.length*30+100),
       xaxis:{{fixedrange:true,title:'Tickets',automargin:true}}, yaxis:{{fixedrange:true,automargin:true}},
@@ -1519,7 +1519,7 @@ function renderAll() {{
       {{ type:'bar', orientation:'h', y: svcTodayAgents.map(e=>e[0]), x: svcTodayAgents.map(e=>e[1].inc),
          name:'Incident', marker:{{color:'#DAA520'}}, text: svcTodayAgents.map(e=>e[1].inc||''), textposition:'inside', textfont:{{color:'white'}} }},
     ], {{
-      barmode:'stack', title:{{text:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)',y:0.98,yanchor:'top'}},
+      barmode:'stack', title:{{text:"Today's Tickets Resolved/Closed \\u2014 SVC vs INC ("+todayResolved.length+' total)<br><span style="font-size:11px;color:#888;">'+twLabel+'</span>',y:0.98,yanchor:'top'}},
       margin:{{l:150,t:100,r:30,b:50}},
       height: Math.max(550, svcTodayAgents.length*30+100),
       xaxis:{{fixedrange:true,title:'Tickets',automargin:true}}, yaxis:{{fixedrange:true,automargin:true}},
@@ -1571,7 +1571,7 @@ function renderAll() {{
       type:'sunburst', ids:ids, labels:labels, parents:parents, values:values,
       textinfo:'label+percent entry', branchvalues:'total',
     }}], {{
-      title:"Today's Category \\u2192 Subcategory", margin:{{t:40,b:20}}, height:450,
+      title:{{text:"Today's Category \\u2192 Subcategory<br><span style='font-size:11px;color:#888;'>"+twLabel+"</span>"}}, margin:{{t:60,b:20}}, height:450,
     }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     sunEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
@@ -1611,7 +1611,7 @@ function renderAll() {{
       text: groupEntries.map(e=>(e[1]/60).toFixed(1)+'h'), textposition:'outside',
       marker:{{ color: groupEntries.map((_,i) => colors[i%colors.length]) }},
     }}], {{
-      title:'Time Logged by Group (Today)',
+      title:{{text:'Time Logged by Group (Today)<br><span style="font-size:11px;color:#888;">'+twLabel+'</span>'}},
       margin:{{t:40,b:50,l:10,r:40}},
       height: Math.max(300, groupEntries.length*50+80),
       xaxis:{{fixedrange:true,title:'Hours',automargin:true}},
