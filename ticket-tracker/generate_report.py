@@ -1092,7 +1092,7 @@ shift_html = f"""<!DOCTYPE html>
   .kpi-row {{ display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }}
   .kpi-card {{ background: #fff; border-radius: 10px; padding: 16px 24px; flex: 1; min-width: 140px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); text-align: center; }}
   .kpi-card .label {{ font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }}
-  .kpi-card .value {{ font-size: 2rem; font-weight: 700; color: #1a1a2e; margin-top: 4px; }}
+  .kpi-card .value {{ font-size: 2rem; font-weight: 700; color: #1a1a2e; margin-top: 4px; white-space: nowrap; font-variant-numeric: lining-nums tabular-nums; font-family: "Segoe UI", Roboto, sans-serif; }}
   .charts-row {{ display: flex; gap: 16px; flex-wrap: wrap; }}
   .chart-box {{ background: #fff; border-radius: 10px; padding: 12px; flex: 1; min-width: 400px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }}
   .chart-full {{ background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-top: 16px; }}
@@ -1118,7 +1118,7 @@ shift_html = f"""<!DOCTYPE html>
     .chart-full {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }}
     .kpi-row {{ flex-wrap: wrap; gap: 10px; }}
     .kpi-card {{ min-width: 45%; flex: 1 1 45%; padding: 12px 8px; }}
-    .kpi-card .value {{ font-size: 1.5rem; }}
+    .kpi-card .value {{ font-size: 1.5rem !important; }}
     .kpi-card .label {{ font-size: 0.7rem; }}
     h2 {{ font-size: 1rem; margin: 16px 0 8px; }}
     .filter-row {{ flex-direction: column; }}
@@ -1132,7 +1132,7 @@ shift_html = f"""<!DOCTYPE html>
 
   @media (max-width: 480px) {{
     .kpi-card {{ min-width: 100%; flex: 1 1 100%; }}
-    .kpi-card .value {{ font-size: 1.3rem; }}
+    .kpi-card .value {{ font-size: 1.3rem !important; }}
     .sidebar h1 {{ font-size: 1rem; }}
     .sidebar .info-box {{ padding: 8px; }}
     .main {{ padding: 8px; }}
@@ -1368,7 +1368,7 @@ let currentTickets = [];
 function renderAll() {{
   const w = getWindow();
   const twLabel = fmtAmPm(w.startH, w.startM) + ' - ' + fmtAmPm(w.endH, w.endM) + ' UAE';
-  const twSub = '<br><span style="font-size:10px;color:#888;">' + twLabel + '</span>';
+  const twSub = ' <span style="font-size:10px;color:#888;">(' + twLabel + ')</span>';
   const twFont = {{family:'Cambria, Georgia, serif'}};
   document.querySelectorAll('.twBadge').forEach(el => el.textContent = twLabel);
 
@@ -1421,7 +1421,7 @@ function renderAll() {{
       text: stateEntries.map(e => String(e[1])), textposition: 'outside',
       marker: {{ color: '#EF553B' }},
     }}], {{
-      title: {{text:'State Distribution (Today)'+twSub,font:twFont}}, margin: {{ l: 150, t: 55, r: 40, b: 50 }},
+      title: {{text:'State Distribution (Today)'+twSub,font:twFont}}, margin: {{ l: 150, t: 40, r: 40, b: 50 }},
       xaxis: {{ title: 'Tickets', fixedrange: true, automargin: true }}, yaxis: {{ fixedrange: true, automargin: true }},
       height: 350, bargap: 0.15,
     }}, {{ displayModeBar: 'hover', responsive: true }});
@@ -1573,7 +1573,7 @@ function renderAll() {{
       type:'sunburst', ids:ids, labels:labels, parents:parents, values:values,
       textinfo:'label+percent entry', branchvalues:'total',
     }}], {{
-      title:{{text:"Today's Category \\u2192 Subcategory"+twSub,font:twFont}}, margin:{{t:55,b:20}}, height:450,
+      title:{{text:"Today's Category \\u2192 Subcategory"+twSub,font:twFont}}, margin:{{t:40,b:20}}, height:450,
     }}, {{displayModeBar:'hover', responsive:true}});
   }} else {{
     sunEl.innerHTML = '<p style="padding:20px;color:#888;">No data.</p>';
