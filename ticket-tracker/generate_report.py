@@ -1371,18 +1371,16 @@ function renderAll() {{
   const tickets = DATA.tickets.filter(t => inWindow(t.created_at, w.startMins, w.endMins));
   currentTickets = tickets;
 
-  // KPIs — Raised/Incidents/SVC by created_at; Closed/Resolved by resolved_at
+  // KPIs — all based on tickets created in the window, counted by current state
   const raised = tickets.length;
+  const closed = tickets.filter(t => (t.state||'').toLowerCase() === 'closed').length;
+  const resolved = tickets.filter(t => (t.state||'').toLowerCase() === 'resolved').length;
+  const stillOpen = tickets.filter(t => !['closed','resolved'].includes((t.state||'').toLowerCase())).length;
   const incidents = tickets.filter(t => !t.is_service_request).length;
   const svcRequests = tickets.filter(t => t.is_service_request).length;
-  const stillOpen = tickets.filter(t => !['closed','resolved'].includes((t.state||'').toLowerCase())).length;
-
-  // Closed/Resolved counts: resolved within window AND created today only
-  const resolvedInWindow = DATA.resolutions.filter(r => inWindow(r.resolved_at, w.startMins, w.endMins) && r.created_at && r.created_at.includes(DATA.today));
-  const closed = resolvedInWindow.filter(r => (r.state||'').toLowerCase() === 'closed').length;
-  const resolved = resolvedInWindow.filter(r => (r.state||'').toLowerCase() === 'resolved').length;
-  const resInc = resolvedInWindow.filter(r => !r.is_service_request).length;
-  const resSvc = resolvedInWindow.filter(r => r.is_service_request).length;
+  const resolvedOrClosed = tickets.filter(t => ['closed','resolved'].includes((t.state||'').toLowerCase()));
+  const resInc = resolvedOrClosed.filter(t => !t.is_service_request).length;
+  const resSvc = resolvedOrClosed.filter(t => t.is_service_request).length;
 
   document.getElementById('kpiRaised').textContent = raised;
   document.getElementById('kpiIncidents').textContent = incidents;
@@ -1394,7 +1392,7 @@ function renderAll() {{
   document.getElementById('kpiOpen').textContent = stillOpen;
 
   // Resolutions: resolved within the time window
-  const resAll = resolvedInWindow;
+  const resAll = DATA.resolutions.filter(r => inWindow(r.resolved_at, w.startMins, w.endMins));
   // Filter to only tickets created TODAY AND in the time window
   const resToday = resAll.filter(r => r.created_at && r.created_at.includes(DATA.today) && inWindow(r.created_at, w.startMins, w.endMins));
 
