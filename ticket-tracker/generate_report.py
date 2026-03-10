@@ -1383,8 +1383,8 @@ function renderAll() {{
   const resInc = resolvedInWindow.filter(r => !r.is_service_request).length;
   const resSvc = resolvedInWindow.filter(r => r.is_service_request).length;
 
-  // Still Open = tickets raised in window not yet resolved by end of window
-  const stillOpen = Math.max(0, raised - closed - resolved);
+  // Still Open = tickets created in window whose current state is not closed/resolved
+  const stillOpen = tickets.filter(t => !['closed','resolved'].includes((t.state||'').toLowerCase())).length;
 
   document.getElementById('kpiRaised').textContent = raised;
   document.getElementById('kpiIncidents').textContent = incidents;
