@@ -217,14 +217,14 @@ if not all_agent_util_df.empty:
     if not all_group_chart_data.empty:
         fig_all_group = px.bar(
             all_group_chart_data, x="Hours", y="Group", orientation="h",
-            title="Time Logged by Group (All Tickets)",
+            title="Time Logged by Group (All Tickets)<br><sup style='font-size:10px;color:#666'>Time entries logged today across all tickets (including older ones)</sup>",
             text="Hours", color="Group",
         )
         fig_all_group.update_traces(textposition="outside")
         fig_all_group.update_layout(
             xaxis_title="Hours", yaxis_title="",
             showlegend=False,
-            margin=dict(t=40, b=50),
+            margin=dict(t=60, b=50),
             height=max(250, len(all_group_chart_data) * 50 + 80),
             xaxis=dict(fixedrange=True, automargin=True),
             yaxis=dict(fixedrange=True),
