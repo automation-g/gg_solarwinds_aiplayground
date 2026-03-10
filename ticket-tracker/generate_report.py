@@ -54,14 +54,15 @@ df["Date"] = df["Created"].dt.date
 
 chart_opts = dict(full_html=False, include_plotlyjs=False)
 
-# ── Agent Time Tracking (today only, including Internal) ─────────────────────
-print("Fetching today's tickets (incl. Internal) for agent utilization...")
+# ── Agent Time Tracking (full range, including Internal) ──────────────────────
+print("Fetching all tickets (incl. Internal) for agent utilization...")
 raw_with_internal = fetch_incidents(start_str, end_str, exclude_internal=False)
-today_raw = [r for r in raw_with_internal if pd.to_datetime(r.get("created_at", ""), utc=True).date() == today]
-print(f"Got {len(today_raw)} tickets today (incl. Internal)")
-today_detailed = fetch_incidents_with_details(today_raw)
-time_tracks = fetch_time_tracks(today_detailed)
-print(f"Got {len(time_tracks)} time track entries")
+print(f"Got {len(raw_with_internal)} tickets in range (incl. Internal)")
+all_detailed = fetch_incidents_with_details(raw_with_internal)
+all_time_tracks_raw = fetch_time_tracks(all_detailed)
+print(f"Got {len(all_time_tracks_raw)} time track entries across full range")
+today_detailed = [r for r in all_detailed if pd.to_datetime(r.get("created_at", ""), utc=True).date() == today]
+time_tracks = [t for t in all_time_tracks_raw if t.get("created_at", "")[:10] == today.strftime("%Y-%m-%d")]
 
 from collections import defaultdict
 agent_util: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "entries": 0, "tickets_assigned": 0, "tasks": [], "group": ""})
@@ -152,21 +153,28 @@ if not agent_util_df.empty:
         )
         chart_agent_group = pio.to_html(fig_group, **chart_opts)
 
-# ── Agent Time Log (Today's logs across ALL tickets, incl. Internal) ─────────
-print("Fetching all incidents updated today (incl. Internal) for time logs...")
-updated_today_raw = fetch_incidents_updated(
-    today.strftime("%Y-%m-%dT00:00:00Z"),
-    today.strftime("%Y-%m-%dT23:59:59Z"),
-    exclude_internal=False,
-)
-print(f"Got {len(updated_today_raw)} incidents updated today (incl. Internal)")
-updated_detailed = fetch_incidents_with_details(updated_today_raw)
-all_time_tracks = fetch_time_tracks(updated_detailed)
-# Filter to only time entries logged today
+# ── Agent Time Log (reuse already-fetched data for full date range) ────────────
 today_str = today.strftime("%Y-%m-%d")
-todays_logs = [t for t in all_time_tracks if t.get("created_at", "")[:10] == today_str]
-print(f"Time entries logged today (all tickets): {len(todays_logs)}")
+start_date_str = start_date.strftime("%Y-%m-%d")
+range_logs = [t for t in all_time_tracks_raw if start_date_str <= (t.get("created_at", "")[:10] or "") <= today_str]
+print(f"Time entries in date range (all tickets): {len(range_logs)}")
 
+# Build per-entry JSON data for client-side filtering
+import json as _json
+all_time_entries_json = []
+for tt in range_logs:
+    creator = tt.get("creator", {}).get("name", "Unknown")
+    mins = tt.get("minutes", 0)
+    log_date = tt.get("created_at", "")[:10]
+    all_time_entries_json.append({
+        "date": log_date,
+        "group": agent_group_map.get(creator, ""),
+        "agent": creator,
+        "minutes": mins,
+    })
+
+# Build default (today) table for initial render
+todays_logs = [t for t in range_logs if t.get("created_at", "")[:10] == today_str]
 all_agent_util: dict[str, dict] = defaultdict(lambda: {"minutes": 0, "entries": 0, "group": ""})
 for tt in todays_logs:
     creator = tt.get("creator", {}).get("name", "Unknown")
@@ -189,15 +197,19 @@ for agent, data in sorted(all_agent_util.items(), key=lambda x: -x[1]["minutes"]
 all_agent_util_df = pd.DataFrame(all_agent_rows) if all_agent_rows else pd.DataFrame()
 all_agent_util_html = all_agent_util_df.to_html(index=False, classes="data-table", table_id="all-agent-util") if not all_agent_util_df.empty else ""
 
-# CSV for all agent time log
+# CSV for all agent time log (will be regenerated client-side when filters change)
 all_agent_csv_b64 = ""
 if not all_agent_util_df.empty:
     all_agent_csv_data = all_agent_util_df.to_csv(index=False)
     all_agent_csv_b64 = __import__("base64").b64encode(all_agent_csv_data.encode()).decode()
 
-# Group filter options for all-tickets section
+# Filter options for all-tickets section
 all_agent_groups = sorted(set(r["Group"] for r in all_agent_rows if r["Group"])) if all_agent_rows else []
 all_agent_group_options = "\n".join(f'<option value="{g}">{g}</option>' for g in all_agent_groups)
+all_agent_names = sorted(set(e["agent"] for e in all_time_entries_json if e["agent"]))
+all_agent_name_options = "\n".join(f'<option value="{html.escape(a)}">{html.escape(a)}</option>' for a in all_agent_names)
+all_groups_for_filter = sorted(set(e["group"] for e in all_time_entries_json if e["group"]))
+all_group_filter_options = "\n".join(f'<option value="{html.escape(g)}">{html.escape(g)}</option>' for g in all_groups_for_filter)
 
 # Chart: Time logged per group (all tickets)
 chart_all_agent_group = ""
@@ -235,7 +247,7 @@ if not all_agent_util_df.empty:
 # SolarWinds API has no resolved_at field. Fetch the actual resolution date
 # from the audit trail (state change to Resolved/Closed).
 resolved_candidates = []
-for r in updated_detailed:
+for r in all_detailed:
     # Exclude Internal from resolution chart
     cat = safe_get(r, "category", "name") if isinstance(r.get("category"), dict) else str(r.get("category", ""))
     if cat.strip().lower() == "internal":
@@ -770,15 +782,97 @@ page_html = f"""<!DOCTYPE html>
 <p style="font-size:0.85rem;color:#666;margin-bottom:12px;">Time entries logged today across all tickets (including older ones).</p>
 {f'<div class="chart-full">{chart_all_agent_group}</div>' if chart_all_agent_group else ''}
 <div style="margin-bottom:12px;margin-top:12px;">
-  <a class="content-btn" href="data:text/csv;base64,{all_agent_csv_b64}" download="agent_time_log_{today}.csv">Export CSV</a>
+  <a class="content-btn" id="allAgentCsvBtn" href="data:text/csv;base64,{all_agent_csv_b64}" download="agent_time_log_{today}.csv">Export CSV</a>
 </div>
-<div class="filter-row">
-  <select id="filterAllGroup" multiple onchange="filterAllAgentTable()" style="min-width:300px;min-height:36px;padding:6px;">
-    {all_agent_group_options}
-  </select>
-  <span style="font-size:0.8rem;color:#888;align-self:center;">Hold Ctrl/Cmd to select multiple groups. No selection = All.</span>
+<div class="filter-row" style="flex-wrap:wrap;gap:12px;">
+  <div style="display:flex;flex-direction:column;">
+    <label style="font-size:0.75rem;color:#888;margin-bottom:2px;">Date From</label>
+    <input type="date" id="allDateFrom" value="{today_str}" max="{today_str}" min="{start_date}" onchange="rebuildAllAgentTable()" style="padding:6px;border:1px solid #ddd;border-radius:6px;font-size:0.85rem;">
+  </div>
+  <div style="display:flex;flex-direction:column;">
+    <label style="font-size:0.75rem;color:#888;margin-bottom:2px;">Date To</label>
+    <input type="date" id="allDateTo" value="{today_str}" max="{today_str}" min="{start_date}" onchange="rebuildAllAgentTable()" style="padding:6px;border:1px solid #ddd;border-radius:6px;font-size:0.85rem;">
+  </div>
+  <div style="display:flex;flex-direction:column;">
+    <label style="font-size:0.75rem;color:#888;margin-bottom:2px;">Filter by Group</label>
+    <select id="filterAllGroup" multiple onchange="rebuildAllAgentTable()" style="min-width:200px;min-height:36px;padding:6px;">
+      {all_group_filter_options}
+    </select>
+  </div>
+  <div style="display:flex;flex-direction:column;">
+    <label style="font-size:0.75rem;color:#888;margin-bottom:2px;">Filter by Agent</label>
+    <select id="filterAllAgent" multiple onchange="rebuildAllAgentTable()" style="min-width:200px;min-height:36px;padding:6px;">
+      {all_agent_name_options}
+    </select>
+  </div>
+  <span style="font-size:0.8rem;color:#888;align-self:flex-end;">Hold Ctrl/Cmd to select multiple. No selection = All.</span>
 </div>
-<div class="table-wrap">{all_agent_util_html if all_agent_util_html else '<p style="padding:20px;color:#888;">No time log data for today.</p>'}</div>
+<div class="table-wrap" id="allAgentTableWrap">{all_agent_util_html if all_agent_util_html else '<p style="padding:20px;color:#888;">No time log data for today.</p>'}</div>
+<script>
+var ALL_TIME_ENTRIES = {_json.dumps(all_time_entries_json)};
+function rebuildAllAgentTable() {{
+  var dateFrom = document.getElementById('allDateFrom').value;
+  var dateTo = document.getElementById('allDateTo').value;
+  var selGroups = Array.from(document.getElementById('filterAllGroup').selectedOptions).map(function(o){{return o.value;}});
+  var selAgents = Array.from(document.getElementById('filterAllAgent').selectedOptions).map(function(o){{return o.value;}});
+
+  // Filter entries
+  var filtered = ALL_TIME_ENTRIES.filter(function(e) {{
+    if (e.date < dateFrom || e.date > dateTo) return false;
+    if (selGroups.length > 0 && selGroups.indexOf(e.group) === -1) return false;
+    if (selAgents.length > 0 && selAgents.indexOf(e.agent) === -1) return false;
+    return true;
+  }});
+
+  // Aggregate by agent
+  var agg = {{}};
+  filtered.forEach(function(e) {{
+    if (!agg[e.agent]) agg[e.agent] = {{group: e.group, minutes: 0, entries: 0}};
+    agg[e.agent].minutes += e.minutes;
+    agg[e.agent].entries += 1;
+  }});
+
+  // Sort by minutes descending
+  var agents = Object.keys(agg).sort(function(a, b) {{ return agg[b].minutes - agg[a].minutes; }});
+
+  if (agents.length === 0) {{
+    document.getElementById('allAgentTableWrap').innerHTML = '<p style="padding:20px;color:#888;">No time log data for selected filters.</p>';
+    updateAllAgentCsv([]);
+    return;
+  }}
+
+  // Build table
+  var rows = [];
+  agents.forEach(function(agent) {{
+    var d = agg[agent];
+    var hrs = Math.floor(d.minutes / 60);
+    var mins = d.minutes % 60;
+    rows.push({{group: d.group, agent: agent, time: hrs + 'h ' + mins + 'm', entries: d.entries}});
+  }});
+
+  var html = '<table class="data-table" id="all-agent-util"><thead><tr><th>Group</th><th>Agent</th><th>Time Logged</th><th>Entries</th></tr></thead><tbody>';
+  rows.forEach(function(r) {{
+    html += '<tr><td>' + r.group + '</td><td>' + r.agent + '</td><td>' + r.time + '</td><td>' + r.entries + '</td></tr>';
+  }});
+  html += '</tbody></table>';
+  document.getElementById('allAgentTableWrap').innerHTML = html;
+  updateAllAgentCsv(rows);
+}}
+
+function updateAllAgentCsv(rows) {{
+  var csv = 'Group,Agent,Time Logged,Entries\\n';
+  rows.forEach(function(r) {{
+    csv += '"' + r.group + '","' + r.agent + '","' + r.time + '",' + r.entries + '\\n';
+  }});
+  var blob = new Blob([csv], {{type: 'text/csv'}});
+  var url = URL.createObjectURL(blob);
+  var btn = document.getElementById('allAgentCsvBtn');
+  var dateFrom = document.getElementById('allDateFrom').value;
+  var dateTo = document.getElementById('allDateTo').value;
+  btn.href = url;
+  btn.download = 'agent_time_log_' + dateFrom + '_to_' + dateTo + '.csv';
+}}
+</script>
 
 </div><!-- end .main -->
 
@@ -849,17 +943,7 @@ function filterAgentTable() {{
   }});
 }}
 
-function filterAllAgentTable() {{
-  const sel = document.getElementById('filterAllGroup');
-  const selected = Array.from(sel.selectedOptions).map(o => o.value);
-  const rows = document.querySelectorAll('#all-agent-util tbody tr');
-  rows.forEach(row => {{
-    const cells = row.querySelectorAll('td');
-    const groupVal = cells[0] ? cells[0].textContent.trim() : '';
-    const matchGroup = selected.length === 0 || selected.includes(groupVal);
-    row.style.display = matchGroup ? '' : 'none';
-  }});
-}}
+// filterAllAgentTable replaced by rebuildAllAgentTable (inline script above)
 
 function filterTable() {{
   const q = document.getElementById('search').value.toLowerCase();
