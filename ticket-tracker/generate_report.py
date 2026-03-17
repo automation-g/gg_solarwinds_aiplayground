@@ -46,11 +46,12 @@ for r in raw:
     )
 
 df = pd.DataFrame(rows)
+# Derive Date from raw API timestamp (local/UAE time) before UTC conversion
+df["Date"] = pd.to_datetime(df["Created"].str[:10], errors="coerce").dt.date
 df["Created"] = pd.to_datetime(df["Created"], errors="coerce", utc=True)
 df["Updated"] = pd.to_datetime(df["Updated"], errors="coerce", utc=True)
 df["Due"] = pd.to_datetime(df["Due"], errors="coerce", utc=True)
 df["Resolved At"] = pd.to_datetime(df["Resolved At"], errors="coerce", utc=True)
-df["Date"] = df["Created"].dt.date
 
 chart_opts = dict(full_html=False, include_plotlyjs=False)
 
