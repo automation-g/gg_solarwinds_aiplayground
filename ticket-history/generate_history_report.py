@@ -25,7 +25,8 @@ rows = conn.execute("""
            is_service_request, is_escalated,
            substr(created_at, 1, 10) as created_date,
            substr(created_at, 1, 7) as month,
-           substr(updated_at, 1, 10) as updated_date
+           substr(updated_at, 1, 10) as updated_date,
+           substr(resolved_at, 1, 10) as resolved_date
     FROM incidents
     WHERE created_at >= '2025-03-01'
     ORDER BY created_at DESC
@@ -33,7 +34,7 @@ rows = conn.execute("""
 
 cols = ["number", "name", "state", "priority", "category", "subcategory",
         "assignee", "requester", "site", "department",
-        "is_svc", "is_escalated", "created_date", "month", "updated_date"]
+        "is_svc", "is_escalated", "created_date", "month", "updated_date", "resolved_date"]
 
 incidents = [dict(zip(cols, r)) for r in rows]
 print(f"Loaded {len(incidents):,} incidents")
@@ -162,7 +163,9 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
 .kpi-card .value {{ color: #fff; font-size: 1.6rem; font-weight: 700; }}
 .kpi-card .bar {{ height: 3px; border-radius: 2px; margin-top: 6px; }}
 
-.section-title {{ color: #fff; font-size: 1rem; font-weight: 600; margin: 20px 0 10px; }}
+.section-title {{ color: #fff; font-size: 1rem; font-weight: 600; margin: 20px 0 10px; display: flex; justify-content: space-between; align-items: center; }}
+.dl-btn {{ background: none; border: 1px solid #2d3352; color: #8b949e; border-radius: 4px; padding: 4px 10px; font-size: 0.7rem; cursor: pointer; }}
+.dl-btn:hover {{ background: #2d3352; color: #fff; }}
 
 .tabs {{ display: flex; gap: 0; background: #222840; border-radius: 8px; padding: 4px; margin-bottom: 12px; width: fit-content; }}
 .tab-btn {{
@@ -183,7 +186,7 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
     border: 1px solid #2d3352; border-radius: 6px; font-size: 0.85rem; margin-bottom: 12px;
 }}
 table {{ width: 100%; border-collapse: collapse; font-size: 0.8rem; }}
-th {{ text-align: left; padding: 8px 10px; color: #8b949e; border-bottom: 1px solid #2d3352; font-weight: 600; text-transform: uppercase; font-size: 0.7rem; }}
+th {{ text-align: left; padding: 8px 10px; color: #8b949e; border-bottom: 1px solid #2d3352; font-weight: 600; text-transform: uppercase; font-size: 0.7rem; position: sticky; top: 0; background: #222840; z-index: 1; }}
 td {{ padding: 6px 10px; border-bottom: 1px solid #2d3352; color: #c9d1d9; }}
 tr:hover {{ background: rgba(88,166,255,0.05); }}
 .page-nav {{ display: flex; align-items: center; gap: 12px; margin-top: 10px; }}
@@ -217,11 +220,6 @@ tr:hover {{ background: rgba(88,166,255,0.05); }}
     </div>
 </div>
 
-<div class="sync-row">
-    <button class="sync-btn" onclick="triggerRefresh()">Refresh Data</button>
-    <span class="sync-caption">Triggers GitHub Actions to regenerate with latest data.</span>
-    <span id="syncStatus"></span>
-</div>
 
 <div class="filter-bar">
     <div class="filter-row">
@@ -285,11 +283,10 @@ tr:hover {{ background: rgba(88,166,255,0.05); }}
     <div class="kpi-card"><div class="label">Resolved</div><div class="value" id="kpiResolved">-</div><div class="bar" id="barResolved"></div></div>
     <div class="kpi-card"><div class="label">Closed</div><div class="value" id="kpiClosed">-</div><div class="bar" id="barClosed"></div></div>
     <div class="kpi-card"><div class="label">Open</div><div class="value" id="kpiOpen">-</div><div class="bar" id="barOpen"></div></div>
-    <div class="kpi-card"><div class="label">Escalated</div><div class="value" id="kpiEscalated">-</div><div class="bar" style="background:#f778ba;"></div></div>
     <div class="kpi-card"><div class="label">Total Hours Logged</div><div class="value" id="kpiHours">-</div><div class="bar" style="background:#56d364;"></div></div>
 </div>
 
-<div class="section-title">Ticket Volume Trends</div>
+<div class="section-title"><span>Ticket Volume Trends</span><button class="dl-btn" onclick="downloadChart('trendChart','ticket_volume_trends')">Download</button></div>
 <div class="tabs">
     <button class="tab-btn active" onclick="showTrend('monthly',this)">Monthly</button>
     <button class="tab-btn" onclick="showTrend('weekly',this)">Weekly</button>
@@ -297,26 +294,23 @@ tr:hover {{ background: rgba(88,166,255,0.05); }}
 </div>
 <div class="chart-box"><div id="trendChart" style="height:350px;"></div></div>
 
-<div class="section-title">Open / Pending Backlog</div>
+<div class="section-title"><span>Open / Pending Backlog</span><button class="dl-btn" onclick="downloadCharts(['backlogChart','typeChart','priorityChart'],'backlog_charts')">Download</button></div>
 <div class="chart-row">
     <div class="chart-third"><div class="chart-box"><div id="backlogChart" style="height:400px;"></div></div></div>
     <div class="chart-third"><div class="chart-box"><div id="typeChart" style="height:400px;"></div></div></div>
     <div class="chart-third"><div class="chart-box"><div id="priorityChart" style="height:400px;"></div></div></div>
 </div>
 
-<div class="section-title">Category & Department Breakdown</div>
+<div class="section-title"><span>Category & Department Breakdown</span><button class="dl-btn" onclick="downloadCharts(['categoryChart','deptChart'],'category_department')">Download</button></div>
 <div class="chart-row">
     <div class="chart-half"><div class="chart-box"><div id="categoryChart" style="height:450px;"></div></div></div>
     <div class="chart-half"><div class="chart-box"><div id="deptChart" style="height:450px;"></div></div></div>
 </div>
 
-<div class="section-title">Priority by Department</div>
-<div class="chart-box"><div id="priDeptChart" style="height:450px;"></div></div>
-
 <div class="section-title">Ticket Details</div>
 <div class="table-section">
     <input type="text" class="search-box" id="searchBox" placeholder="Search by ticket name, number, or requester..." oninput="renderTable()">
-    <div id="ticketTable"></div>
+    <div id="ticketTable" style="max-height:400px;overflow-y:auto;"></div>
     <div class="page-nav">
         <button class="page-btn" id="prevBtn" onclick="prevPage()">Previous</button>
         <span class="page-info" id="pageInfo"></span>
@@ -335,11 +329,12 @@ const TYPE_MAP = {{
     'Internal': ['Internal']
 }};
 const CHART_BG = '#222840';
+const fmt = (n) => n.toLocaleString();
 const GRID_COLOR = '#2d3352';
 
 let filtered = [];
 let currentPage = 1;
-const perPage = 100;
+const perPage = 30;
 let currentTrend = 'monthly';
 
 function getSelected(id) {{
@@ -403,7 +398,6 @@ function renderAll() {{
     renderPriorityChart();
     renderCategoryChart();
     renderDeptChart();
-    renderPriDeptChart();
     renderTable();
 }}
 
@@ -412,7 +406,6 @@ function renderKPIs() {{
     const resolved = filtered.filter(r => r.state && r.state.toLowerCase() === 'resolved').length;
     const closed = filtered.filter(r => r.state && r.state.toLowerCase() === 'closed').length;
     const open = total - resolved - closed;
-    const escalated = filtered.filter(r => r.is_escalated).length;
     const totalMins = filtered.reduce((sum, r) => sum + (r.minutes || 0), 0);
     const totalHours = (totalMins / 60).toFixed(1);
 
@@ -420,7 +413,6 @@ function renderKPIs() {{
     document.getElementById('kpiResolved').textContent = resolved.toLocaleString();
     document.getElementById('kpiClosed').textContent = closed.toLocaleString();
     document.getElementById('kpiOpen').textContent = open.toLocaleString();
-    document.getElementById('kpiEscalated').textContent = escalated.toLocaleString();
     document.getElementById('kpiHours').textContent = Number(totalHours).toLocaleString(undefined, {{minimumFractionDigits: 1}});
     document.getElementById('ticketCount').textContent = total.toLocaleString() + ' tickets';
 
@@ -449,8 +441,8 @@ function renderTrend(type) {{
         }});
         const keys = Object.keys(months).sort();
         Plotly.react('trendChart', [
-            {{x: keys, y: keys.map(k => months[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => months[k].inc), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
-            {{x: keys, y: keys.map(k => months[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => months[k].svc), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
+            {{x: keys, y: keys.map(k => months[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => fmt(months[k].inc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
+            {{x: keys, y: keys.map(k => months[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => fmt(months[k].svc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
         ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Month', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
     }} else if (type === 'weekly') {{
         const weeks = {{}};
@@ -460,31 +452,43 @@ function renderTrend(type) {{
             const diff = d.getDate() - day + (day === 0 ? -6 : 1);
             const monday = new Date(d.setDate(diff));
             const key = monday.toISOString().slice(0, 10);
-            weeks[key] = (weeks[key] || 0) + 1;
+            if (!weeks[key]) weeks[key] = {{inc: 0, svc: 0}};
+            const t = getTicketType(r.category);
+            if (t === 'Incident') weeks[key].inc++;
+            else if (t === 'Service Request') weeks[key].svc++;
         }});
         const keys = Object.keys(weeks).sort();
         Plotly.react('trendChart', [
-            {{x: keys, y: keys.map(k => weeks[k]), type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => weeks[k]), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
-        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Tickets Received per Week', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR}}}}, {{responsive: true, displayModeBar: false}});
+            {{x: keys, y: keys.map(k => weeks[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => fmt(weeks[k].inc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
+            {{x: keys, y: keys.map(k => weeks[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => fmt(weeks[k].svc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
+        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Week', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
     }} else {{
         const days = {{}};
-        filtered.forEach(r => {{ days[r.created_date] = (days[r.created_date] || 0) + 1; }});
+        filtered.forEach(r => {{
+            const d = r.created_date;
+            if (!days[d]) days[d] = {{inc: 0, svc: 0}};
+            const t = getTicketType(r.category);
+            if (t === 'Incident') days[d].inc++;
+            else if (t === 'Service Request') days[d].svc++;
+        }});
         const keys = Object.keys(days).sort();
         Plotly.react('trendChart', [
-            {{x: keys, y: keys.map(k => days[k]), type: 'scatter', mode: 'lines', line: {{color: '#58a6ff', width: 1.5}}, fill: 'tozeroy', fillcolor: 'rgba(88,166,255,0.1)'}},
-        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Tickets Received per Day', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR}}}}, {{responsive: true, displayModeBar: false}});
+            {{x: keys, y: keys.map(k => days[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => fmt(days[k].inc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
+            {{x: keys, y: keys.map(k => days[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => fmt(days[k].svc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
+        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Day', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
     }}
 }}
 
 function renderBacklog() {{
-    const open = filtered.filter(r => r.state && !['resolved','closed'].includes(r.state.toLowerCase()));
-    const byState = {{}};
-    open.forEach(r => {{ byState[r.state] = (byState[r.state] || 0) + 1; }});
-    const labels = Object.keys(byState).sort((a, b) => byState[b] - byState[a]);
-    const values = labels.map(l => byState[l]);
-    const colors = {{'Internal-Task':'#8b949e','Work In Progress':'#58a6ff','Assigned':'#a371f7','Pending with Customer ':'#ffa657','Pending from Vendor':'#f0883e','Pending Delivery ':'#f778ba','New':'#3fb950','Awaiting Input':'#79c0ff'}};
-    Plotly.react('backlogChart', [{{labels, values, type: 'pie', hole: 0.5, marker: {{colors: labels.map(l => colors[l] || '#8b949e')}}, textinfo: 'value', textfont: {{color: '#fff', size: 10}}}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Open Tickets by State', margin: {{t: 40, b: 60, l: 10, r: 10}}, showlegend: true, legend: {{font: {{size: 10, color: '#c9d1d9'}}, orientation: 'h', y: -0.1, x: 0.5, xanchor: 'center'}}, annotations: [{{text: '<b>' + open.length.toLocaleString() + '</b>', x: 0.5, y: 0.5, showarrow: false, font: {{size: 20, color: '#fff'}}}}]}}, {{responsive: true, displayModeBar: false}});
+    const total = filtered.length;
+    const resolved = filtered.filter(r => r.state && r.state.toLowerCase() === 'resolved').length;
+    const closed = filtered.filter(r => r.state && r.state.toLowerCase() === 'closed').length;
+    const open = total - resolved - closed;
+    const labels = [fmt(open) + ' Open', fmt(closed) + ' Closed', fmt(resolved) + ' Resolved'];
+    const values = [open, closed, resolved];
+    const colors = ['#f0883e', '#a371f7', '#3fb950'];
+    Plotly.react('backlogChart', [{{labels, values, type: 'pie', hole: 0.5, marker: {{colors}}, textinfo: 'label', textposition: 'auto', textfont: {{color: '#fff', size: 11}}, outsidetextfont: {{color: '#c9d1d9', size: 10}}}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Open vs Closed / Resolved', margin: {{t: 40, b: 40, l: 10, r: 10}}, showlegend: true, legend: {{font: {{size: 10, color: '#c9d1d9'}}, orientation: 'v', x: 1, y: 0.5, xanchor: 'left'}}, annotations: [{{text: '<b>' + total.toLocaleString() + '</b>', x: 0.5, y: 0.5, showarrow: false, font: {{size: 18, color: '#fff'}}}}]}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderTypeChart() {{
@@ -493,37 +497,42 @@ function renderTypeChart() {{
         const t = getTicketType(r.category);
         byType[t] = (byType[t] || 0) + 1;
     }});
-    const labels = Object.keys(byType).sort((a, b) => byType[b] - byType[a]);
-    const values = labels.map(l => byType[l]);
+    const rawLabels = Object.keys(byType).sort((a, b) => byType[b] - byType[a]);
+    const values = rawLabels.map(l => byType[l]);
+    const labels = rawLabels.map((l, i) => l + '<br>' + fmt(values[i]));
     const colors = {{'Incident':'#ff7b72','Service Request':'#58a6ff','Internal':'#8b949e','Other':'#ffa657'}};
-    Plotly.react('typeChart', [{{labels, values, type: 'pie', hole: 0.5, marker: {{colors: labels.map(l => colors[l] || '#8b949e')}}, textinfo: 'label+value', textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}}}],
+    Plotly.react('typeChart', [{{labels, values, type: 'pie', hole: 0.5, marker: {{colors: rawLabels.map(l => colors[l] || '#8b949e')}}, textinfo: 'label', textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}}}],
         {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request', margin: {{t: 40, b: 60, l: 10, r: 10}}, showlegend: true, legend: {{font: {{size: 10, color: '#c9d1d9'}}, orientation: 'h', y: -0.1, x: 0.5, xanchor: 'center'}}, annotations: [{{text: '<b>' + filtered.length.toLocaleString() + '</b>', x: 0.5, y: 0.5, showarrow: false, font: {{size: 20, color: '#fff'}}}}]}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderPriorityChart() {{
     const byPri = {{}};
-    filtered.forEach(r => {{ if (r.priority) byPri[r.priority] = (byPri[r.priority] || 0) + 1; }});
-    const labels = Object.keys(byPri).sort((a, b) => byPri[b] - byPri[a]);
-    const values = labels.map(l => byPri[l]);
+    filtered.forEach(r => {{ const p = (r.priority && r.priority.trim()) ? r.priority : 'None'; byPri[p] = (byPri[p] || 0) + 1; }});
+    const rawLabels = Object.keys(byPri).sort((a, b) => byPri[b] - byPri[a]);
+    const values = rawLabels.map(l => byPri[l]);
     const colors = {{'Critical':'#ff7b72','High':'#f0883e','Medium':'#ffa657','Low':'#3fb950'}};
-    Plotly.react('priorityChart', [{{labels, values, type: 'pie', hole: 0.5, marker: {{colors: labels.map(l => colors[l] || '#8b949e')}}, textinfo: 'label+value', textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Priority Breakdown', margin: {{t: 40, b: 60, l: 10, r: 10}}, showlegend: true, legend: {{font: {{size: 10, color: '#c9d1d9'}}, orientation: 'h', y: -0.1, x: 0.5, xanchor: 'center'}}, annotations: [{{text: '<b>' + filtered.length.toLocaleString() + '</b>', x: 0.5, y: 0.5, showarrow: false, font: {{size: 20, color: '#fff'}}}}]}}, {{responsive: true, displayModeBar: false}});
+    const priTotal = values.reduce((a, b) => a + b, 0);
+    const labels = rawLabels.map((l, i) => fmt(values[i]) + ' ' + l);
+    const priPositions = rawLabels.map(l => ['Critical', 'Medium'].includes(l) ? 'outside' : 'inside');
+    const priPull = rawLabels.map(l => ['Critical', 'Medium'].includes(l) ? 0.05 : 0);
+    Plotly.react('priorityChart', [{{labels, values, type: 'pie', hole: 0.4, marker: {{colors: rawLabels.map(l => colors[l] || '#8b949e')}}, textinfo: 'label', textposition: priPositions, textfont: {{color: '#fff', size: 11}}, outsidetextfont: {{color: '#c9d1d9', size: 10}}, pull: priPull}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Priority Breakdown', margin: {{t: 40, b: 10, l: 50, r: 10}}, showlegend: true, legend: {{font: {{size: 10, color: '#c9d1d9'}}, orientation: 'v', x: 1, y: 0.5, xanchor: 'left'}}, annotations: [{{text: '<b>' + filtered.length.toLocaleString() + '</b>', x: 0.5, y: 0.5, showarrow: false, font: {{size: 18, color: '#fff'}}}}]}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderCategoryChart() {{
     const byCat = {{}};
     filtered.forEach(r => {{ if (r.category) byCat[r.category] = (byCat[r.category] || 0) + 1; }});
     const sorted = Object.entries(byCat).sort((a, b) => a[1] - b[1]);
-    Plotly.react('categoryChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: '#58a6ff'}}, text: sorted.map(s => s[1]), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Tickets by Category', margin: {{t: 40, b: 10, l: 10, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+    Plotly.react('categoryChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: '#58a6ff'}}, text: sorted.map(s => fmt(s[1])), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}, cliponaxis: false}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Tickets by Category', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderDeptChart() {{
     const byDept = {{}};
     filtered.forEach(r => {{ if (r.department) byDept[r.department] = (byDept[r.department] || 0) + 1; }});
     const sorted = Object.entries(byDept).sort((a, b) => b[1] - a[1]).slice(0, 15).reverse();
-    Plotly.react('deptChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: '#58a6ff'}}, text: sorted.map(s => s[1]), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Top 15 Departments', margin: {{t: 40, b: 10, l: 10, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+    Plotly.react('deptChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: '#58a6ff'}}, text: sorted.map(s => fmt(s[1])), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}, cliponaxis: false}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Top 15 Departments', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderPriDeptChart() {{
@@ -561,9 +570,16 @@ function renderTable() {{
     const start = (currentPage - 1) * perPage;
     const pageRows = rows.slice(start, start + perPage);
 
-    let html = '<table><thead><tr><th>Ticket #</th><th>Name</th><th>State</th><th>Priority</th><th>Category</th><th>Department</th><th>Assignee</th><th>Created</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>Ticket #</th><th>Name</th><th>State</th><th>Priority</th><th>Category</th><th>Department</th><th>Assignee</th><th>Requester</th><th style="white-space:nowrap;">Created</th></tr></thead><tbody>';
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const fmtDate = (d) => {{
+        if (!d) return '';
+        const parts = d.split('-');
+        if (parts.length !== 3) return d;
+        return parts[2] + '-' + months[parseInt(parts[1])-1] + '-' + parts[0];
+    }};
     pageRows.forEach(r => {{
-        html += `<tr><td>${{r.number}}</td><td>${{r.name || ''}}</td><td>${{r.state || ''}}</td><td>${{r.priority || ''}}</td><td>${{r.category || ''}}</td><td>${{r.department || ''}}</td><td>${{r.assignee || ''}}</td><td>${{r.created_date || ''}}</td></tr>`;
+        html += `<tr><td>${{r.number}}</td><td>${{r.name || ''}}</td><td>${{r.state || ''}}</td><td>${{r.priority || ''}}</td><td>${{r.category || ''}}</td><td>${{r.department || ''}}</td><td>${{r.assignee || ''}}</td><td>${{r.requester || ''}}</td><td style="white-space:nowrap;">${{fmtDate(r.created_date)}}</td></tr>`;
     }});
     html += '</tbody></table>';
     document.getElementById('ticketTable').innerHTML = html;
@@ -627,6 +643,18 @@ async function triggerRefresh() {{
         btn.textContent = 'Refresh Data';
         btn.disabled = false;
     }}
+}}
+
+function downloadChart(chartId, filename) {{
+    Plotly.downloadImage(chartId, {{format: 'png', width: 1200, height: 500, filename: filename, scale: 2}});
+}}
+
+function downloadCharts(chartIds, filename) {{
+    chartIds.forEach((id, i) => {{
+        setTimeout(() => {{
+            Plotly.downloadImage(id, {{format: 'png', width: 800, height: 500, filename: filename + '_' + (i+1), scale: 2}});
+        }}, i * 500);
+    }});
 }}
 
 // Initialize

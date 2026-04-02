@@ -121,36 +121,31 @@ def sync_recent(days_back: int | None = None, on_progress: Callable | None = Non
         if processed % 10 == 0:
             conn.commit()
 
-    # Updated tickets — fetch details + time tracks in parallel
-    progress(f"Step 3/3: Updating {len(update_ids)} existing tickets (parallel)...")
-
-    def _fetch_detail_and_tt(inc_id):
-        detail = fetch_incident_detail(inc_id)
-        if not detail:
-            return (inc_id, None, [])
-        tracks = []
-        for tt in detail.get("time_tracks", []):
-            href = tt.get("href", "")
-            if href:
-                tt_data = fetch_time_track_detail(href)
-                if tt_data:
-                    tracks.append(tt_data)
-        return (inc_id, detail, tracks)
-
-    with ThreadPoolExecutor(max_workers=10) as pool:
-        futures = {pool.submit(_fetch_detail_and_tt, inc_id): inc_id for inc_id in update_ids}
-        for fut in as_completed(futures):
-            inc_id, detail, tracks = fut.result()
-            if detail:
-                _upsert_full(conn, detail)
-                for tt_data in tracks:
-                    _upsert_time_track(conn, inc_id, tt_data)
-                    tt_count += 1
-            updated_count += 1
-            processed += 1
-            if processed % 50 == 0:
-                conn.commit()
-                progress(_progress_msg())
+    # Updated tickets — quick update from listing data (no extra API calls)
+    for inc_id in update_ids:
+        r = all_records[inc_id]
+        conn.execute("""
+            UPDATE incidents SET
+                state = ?, priority = ?, category = ?, assignee_name = ?,
+                updated_at = ?, resolved_at = ?,
+                is_escalated = ?, fetched_at = ?
+            WHERE id = ?
+        """, (
+            r.get("state", ""),
+            r.get("priority", ""),
+            _safe_get(r, "category", "name"),
+            _safe_get(r, "assignee", "name"),
+            r.get("updated_at", ""),
+            r.get("resolved_at", ""),
+            1 if r.get("is_escalated") else 0,
+            datetime.now().isoformat(),
+            inc_id,
+        ))
+        updated_count += 1
+        processed += 1
+        if processed % 50 == 0:
+            conn.commit()
+            progress(_progress_msg())
 
     conn.commit()
     total = conn.execute("SELECT COUNT(*) FROM incidents").fetchone()[0]
