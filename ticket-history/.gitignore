@@ -1,0 +1,6 @@
+*.db
+__pycache__/
+.env
+.venv/
+*.log
+sampleimage.jpg

@@ -47,6 +47,12 @@ jobs:
           DAYS_BACK: ${{ inputs.days_back || '7' }}
         run: python generate_report.py
 
+      - name: Copy history report
+        run: |
+          if [ -d "../ticket-history/history" ]; then
+            cp -r ../ticket-history/history .
+          fi
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

@@ -12,6 +12,7 @@ node_modules/
 
 # Generated
 index.html
+!ticket-history/history/index.html
 ticket-tracker/build_tracker_extracted.mjs
 
 # Large / data files
