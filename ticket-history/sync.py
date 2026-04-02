@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
-from api_client import fetch_incident_detail, _get, PER_PAGE
+from api_client import fetch_incident_detail, fetch_time_track_detail, _get, PER_PAGE
 
 DB_PATH = Path(__file__).parent / "ticket_history_slim.db"
 
@@ -89,52 +90,67 @@ def sync_recent(days_back: int | None = None, on_progress: Callable | None = Non
     new_ids = [k for k in all_records if k not in existing_ids]
     update_ids = [k for k in all_records if k in existing_ids]
 
-    progress(f"Step 3/3: Processing {len(new_ids)} new + {len(update_ids)} updated tickets...")
+    progress(f"Step 3/3: Processing {len(new_ids)} new tickets...")
 
     new_count = 0
     updated_count = 0
+    tt_count = 0
     total_to_process = len(new_ids) + len(update_ids)
     processed = 0
 
     def _progress_msg():
         pct = int(processed / max(total_to_process, 1) * 100)
-        return f"Step 3/3: {processed}/{total_to_process} ({pct}%) — {new_count} new, {updated_count} updated"
+        return f"Step 3/3: {processed}/{total_to_process} ({pct}%) — {new_count} new, {updated_count} updated, {tt_count} time tracks"
 
-    # New tickets — fetch full details (need all fields)
+    # New tickets — fetch full details + time tracks
     for inc_id in new_ids:
         detail = fetch_incident_detail(inc_id)
         if detail:
             _upsert_full(conn, detail)
             new_count += 1
+            # Fetch time tracks
+            for tt in detail.get("time_tracks", []):
+                href = tt.get("href", "")
+                if href:
+                    tt_data = fetch_time_track_detail(href)
+                    if tt_data:
+                        _upsert_time_track(conn, inc_id, tt_data)
+                        tt_count += 1
         processed += 1
         progress(_progress_msg())
         if processed % 10 == 0:
             conn.commit()
 
-    # Existing tickets — update from listing data (no extra API call)
-    for inc_id in update_ids:
-        r = all_records[inc_id]
-        conn.execute("""
-            UPDATE incidents SET
-                state = ?, priority = ?, assignee_name = ?,
-                updated_at = ?, resolved_at = ?,
-                is_escalated = ?, fetched_at = ?
-            WHERE id = ?
-        """, (
-            r.get("state", ""),
-            r.get("priority", ""),
-            _safe_get(r, "assignee", "name"),
-            r.get("updated_at", ""),
-            r.get("resolved_at", ""),
-            1 if r.get("is_escalated") else 0,
-            datetime.now().isoformat(),
-            inc_id,
-        ))
-        updated_count += 1
-        processed += 1
-        if processed % 20 == 0:
-            conn.commit()
-            progress(_progress_msg())
+    # Updated tickets — fetch details + time tracks in parallel
+    progress(f"Step 3/3: Updating {len(update_ids)} existing tickets (parallel)...")
+
+    def _fetch_detail_and_tt(inc_id):
+        detail = fetch_incident_detail(inc_id)
+        if not detail:
+            return (inc_id, None, [])
+        tracks = []
+        for tt in detail.get("time_tracks", []):
+            href = tt.get("href", "")
+            if href:
+                tt_data = fetch_time_track_detail(href)
+                if tt_data:
+                    tracks.append(tt_data)
+        return (inc_id, detail, tracks)
+
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        futures = {pool.submit(_fetch_detail_and_tt, inc_id): inc_id for inc_id in update_ids}
+        for fut in as_completed(futures):
+            inc_id, detail, tracks = fut.result()
+            if detail:
+                _upsert_full(conn, detail)
+                for tt_data in tracks:
+                    _upsert_time_track(conn, inc_id, tt_data)
+                    tt_count += 1
+            updated_count += 1
+            processed += 1
+            if processed % 50 == 0:
+                conn.commit()
+                progress(_progress_msg())
 
     conn.commit()
     total = conn.execute("SELECT COUNT(*) FROM incidents").fetchone()[0]
@@ -215,6 +231,23 @@ def _upsert_full(conn: sqlite3.Connection, detail: dict) -> None:
         resolved_by.get("email", "") if isinstance(resolved_by, dict) else "",
         created_by.get("name", "") if isinstance(created_by, dict) else "",
         created_by.get("email", "") if isinstance(created_by, dict) else "",
+        datetime.now().isoformat(),
+    ))
+
+
+def _upsert_time_track(conn: sqlite3.Connection, incident_id: int, tt: dict) -> None:
+    """Insert or replace a time track entry."""
+    conn.execute("""
+        INSERT OR REPLACE INTO time_tracks
+        (id, incident_id, creator_name, minutes, name, created_at, fetched_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        tt.get("id"),
+        incident_id,
+        _safe_get(tt, "creator", "name"),
+        tt.get("minutes", 0),
+        tt.get("name", ""),
+        tt.get("created_at", ""),
         datetime.now().isoformat(),
     ))
 

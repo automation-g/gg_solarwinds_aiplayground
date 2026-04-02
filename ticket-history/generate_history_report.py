@@ -38,6 +38,31 @@ cols = ["number", "name", "state", "priority", "category", "subcategory",
 incidents = [dict(zip(cols, r)) for r in rows]
 print(f"Loaded {len(incidents):,} incidents")
 
+# Load time tracks
+print("Loading time tracks...")
+tt_rows = conn.execute("""
+    SELECT tt.incident_id, tt.minutes
+    FROM time_tracks tt
+    JOIN incidents i ON tt.incident_id = i.id
+    WHERE i.created_at >= '2025-03-01'
+""").fetchall()
+# Build a dict of incident_id -> total minutes
+tt_by_incident = {}
+for inc_id, mins in tt_rows:
+    tt_by_incident[inc_id] = tt_by_incident.get(inc_id, 0) + mins
+print(f"Loaded {len(tt_rows):,} time track entries")
+
+# Also get incident IDs for mapping
+id_rows = conn.execute("""
+    SELECT id, number FROM incidents WHERE created_at >= '2025-03-01'
+""").fetchall()
+number_to_id = {r[1]: r[0] for r in id_rows}
+
+# Add minutes to each incident
+for inc in incidents:
+    inc_id = number_to_id.get(inc["number"], 0)
+    inc["minutes"] = tt_by_incident.get(inc_id, 0)
+
 # Get unique filter values
 departments = sorted(set(r["department"] for r in incidents if r["department"] and r["department"].strip()))
 sites = sorted(set(r["site"] for r in incidents if r["site"] and r["site"].strip()))
@@ -261,6 +286,7 @@ tr:hover {{ background: rgba(88,166,255,0.05); }}
     <div class="kpi-card"><div class="label">Closed</div><div class="value" id="kpiClosed">-</div><div class="bar" id="barClosed"></div></div>
     <div class="kpi-card"><div class="label">Open</div><div class="value" id="kpiOpen">-</div><div class="bar" id="barOpen"></div></div>
     <div class="kpi-card"><div class="label">Escalated</div><div class="value" id="kpiEscalated">-</div><div class="bar" style="background:#f778ba;"></div></div>
+    <div class="kpi-card"><div class="label">Total Hours Logged</div><div class="value" id="kpiHours">-</div><div class="bar" style="background:#56d364;"></div></div>
 </div>
 
 <div class="section-title">Ticket Volume Trends</div>
@@ -387,12 +413,15 @@ function renderKPIs() {{
     const closed = filtered.filter(r => r.state && r.state.toLowerCase() === 'closed').length;
     const open = total - resolved - closed;
     const escalated = filtered.filter(r => r.is_escalated).length;
+    const totalMins = filtered.reduce((sum, r) => sum + (r.minutes || 0), 0);
+    const totalHours = (totalMins / 60).toFixed(1);
 
     document.getElementById('kpiTotal').textContent = total.toLocaleString();
     document.getElementById('kpiResolved').textContent = resolved.toLocaleString();
     document.getElementById('kpiClosed').textContent = closed.toLocaleString();
     document.getElementById('kpiOpen').textContent = open.toLocaleString();
     document.getElementById('kpiEscalated').textContent = escalated.toLocaleString();
+    document.getElementById('kpiHours').textContent = Number(totalHours).toLocaleString(undefined, {{minimumFractionDigits: 1}});
     document.getElementById('ticketCount').textContent = total.toLocaleString() + ' tickets';
 
     const pct = (v) => Math.round(v / Math.max(total, 1) * 100);
