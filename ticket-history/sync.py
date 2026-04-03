@@ -149,10 +149,15 @@ def sync_recent(days_back: int | None = None, on_progress: Callable | None = Non
 
     conn.commit()
 
-    # Assign entity from entity_mapping table
+    # Assign entity from entity_mapping table (dept+site lookup)
     conn.execute("""
         UPDATE incidents SET entity = COALESCE(
-            (SELECT em.entity FROM entity_mapping em WHERE em.department = incidents.department),
+            (SELECT em.entity FROM entity_mapping em
+             WHERE em.department = incidents.department AND em.site = incidents.site),
+            (SELECT em.entity FROM entity_mapping em
+             WHERE em.department = incidents.department AND em.site = ''),
+            (SELECT em.entity FROM entity_mapping em
+             WHERE em.department = '' AND em.site = incidents.site),
             'N/A'
         )
         WHERE entity IS NULL OR entity = 'N/A'

@@ -107,6 +107,9 @@ html = f"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gargash IT Service Desk Reports</title>
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <style>
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
 body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1e2e; color: #c9d1d9; }}
@@ -172,6 +175,7 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
 
 .tabs {{ display: flex; gap: 0; background: #222840; border-radius: 8px; padding: 4px; margin-bottom: 12px; width: fit-content; }}
 .tab-btn {{
+    font-weight: 700;
     background: transparent; color: #8b949e; border: none; border-radius: 6px;
     padding: 8px 16px; font-size: 0.85rem; cursor: pointer;
 }}
@@ -228,11 +232,11 @@ tr:hover {{ background: rgba(88,166,255,0.05); }}
     <div class="filter-row">
         <div class="filter-group">
             <label>Date From</label>
-            <input type="date" id="dateFrom" value="2025-03-01">
+            <input type="text" id="dateFrom" value="01/03/2025" placeholder="DD/MM/YYYY">
         </div>
         <div class="filter-group">
             <label>Date To</label>
-            <input type="date" id="dateTo" value="{datetime.now().strftime('%Y-%m-%d')}">
+            <input type="text" id="dateTo" value="{datetime.now().strftime('%d/%m/%Y')}" placeholder="DD/MM/YYYY">
         </div>
         <div class="filter-group">
             <label>Ticket Type</label>
@@ -360,8 +364,8 @@ function getTicketType(cat) {{
 }}
 
 function applyFilters() {{
-    const dateFrom = document.getElementById('dateFrom').value;
-    const dateTo = document.getElementById('dateTo').value;
+    const dateFrom = parseDMY(document.getElementById('dateFrom').value);
+    const dateTo = parseDMY(document.getElementById('dateTo').value);
     const types = getSelected('filterType');
     const depts = getSelected('filterDept');
     const states = getSelected('filterState');
@@ -388,8 +392,8 @@ function applyFilters() {{
 }}
 
 function resetFilters() {{
-    document.getElementById('dateFrom').value = '2025-03-01';
-    document.getElementById('dateTo').value = '{datetime.now().strftime("%Y-%m-%d")}';
+    document.getElementById('dateFrom').value = '01/03/2025';
+    document.getElementById('dateTo').value = '{datetime.now().strftime("%d/%m/%Y")}';
     ['filterType','filterDept','filterState','filterPriority','filterCat','filterAssignee'].forEach(id => {{
         const sel = document.getElementById(id);
         Array.from(sel.options).forEach(o => {{
@@ -455,9 +459,9 @@ function renderTrend(type) {{
         const monthLabels = keys.map(k => fmtMonth(k));
         const mmMax = Math.max(...keys.map(k => Math.max(months[k].inc, months[k].svc)));
         Plotly.react('trendChart', [
-            {{x: monthLabels, y: keys.map(k => months[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => fmt(months[k].inc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
-            {{x: monthLabels, y: keys.map(k => months[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => fmt(months[k].svc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
-        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Month', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, range: [0, mmMax * 1.15]}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
+            {{x: monthLabels, y: keys.map(k => months[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => '<b>' + fmt(months[k].inc) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
+            {{x: monthLabels, y: keys.map(k => months[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => '<b>' + fmt(months[k].svc) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
+        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Month', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, range: [0, mmMax * 1.15], showticklabels: false}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
     }} else if (type === 'weekly') {{
         const weeks = {{}};
         filtered.forEach(r => {{
@@ -483,9 +487,9 @@ function renderTrend(type) {{
         }});
         const wMax = Math.max(...keys.map(k => Math.max(weeks[k].inc, weeks[k].svc)));
         Plotly.react('trendChart', [
-            {{x: weekLabels, y: keys.map(k => weeks[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => fmt(weeks[k].inc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
-            {{x: weekLabels, y: keys.map(k => weeks[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => fmt(weeks[k].svc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
-        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Week', barmode: 'group', margin: {{t: 50, b: 80, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR, type: 'category', tickangle: 0, dtick: keys.length > 26 ? 4 : 1}}, yaxis: {{gridcolor: GRID_COLOR, range: [0, wMax * 1.1]}}, legend: {{orientation: 'h', y: 1.12, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
+            {{x: weekLabels, y: keys.map(k => weeks[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => '<b>' + fmt(weeks[k].inc) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
+            {{x: weekLabels, y: keys.map(k => weeks[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => '<b>' + fmt(weeks[k].svc) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
+        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Week', barmode: 'group', margin: {{t: 50, b: 80, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR, type: 'category', tickangle: 0, dtick: keys.length > 26 ? 4 : 1}}, yaxis: {{gridcolor: GRID_COLOR, range: [0, wMax * 1.1], showticklabels: false}}, legend: {{orientation: 'h', y: 1.12, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
     }} else {{
         const days = {{}};
         filtered.forEach(r => {{
@@ -498,9 +502,9 @@ function renderTrend(type) {{
         const keys = Object.keys(days).sort();
         const ddMax = Math.max(...keys.map(k => Math.max(days[k].inc, days[k].svc)));
         Plotly.react('trendChart', [
-            {{x: keys, y: keys.map(k => days[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => fmt(days[k].inc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
-            {{x: keys, y: keys.map(k => days[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => fmt(days[k].svc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
-        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Day', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, range: [0, ddMax * 1.15]}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
+            {{x: keys, y: keys.map(k => days[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => '<b>' + fmt(days[k].inc) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
+            {{x: keys, y: keys.map(k => days[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => '<b>' + fmt(days[k].svc) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
+        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Day', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, range: [0, ddMax * 1.15], showticklabels: false}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
     }}
 }}
 
@@ -694,6 +698,24 @@ function downloadCharts(chartIds, filename) {{
         }}, i * 500);
     }});
 }}
+
+// Date picker setup
+// Date picker setup
+function parseDMY(s) {{
+    const [d, m, y] = s.split('/');
+    return y + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
+}}
+
+flatpickr('#dateFrom', {{
+    dateFormat: 'd/m/Y',
+    defaultDate: '01/03/2025',
+    theme: 'dark'
+}});
+flatpickr('#dateTo', {{
+    dateFormat: 'd/m/Y',
+    defaultDate: '03/04/2026',
+    theme: 'dark'
+}});
 
 // Initialize
 applyFilters();
