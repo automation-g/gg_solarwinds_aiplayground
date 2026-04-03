@@ -312,11 +312,12 @@ tr:hover {{ background: rgba(88,166,255,0.05); }}
     <div class="chart-third"><div class="chart-box"><div id="priorityChart" style="height:400px;"></div></div></div>
 </div>
 
-<div class="section-title"><span>Tickets by Business Entity</span><button class="dl-btn" onclick="downloadCharts(['entityChart','entityUsersChart'],'business_entity')">Download</button></div>
+<div class="section-title"><span>Tickets by Business Entity</span><button class="dl-btn" onclick="downloadCharts(['entityChart','entityUsersChart','deptUsersChart'],'business_entity')">Download</button></div>
 <div class="chart-row">
     <div class="chart-half"><div class="chart-box"><div id="entityChart" style="height:400px;"></div></div></div>
     <div class="chart-half"><div class="chart-box"><div id="entityUsersChart" style="height:400px;"></div></div></div>
 </div>
+<div class="chart-box" style="margin-top:16px;max-height:450px;overflow-y:auto;"><div id="deptUsersChart"></div></div>
 
 <div class="section-title"><span>Category & Department Breakdown</span><button class="dl-btn" onclick="downloadCharts(['categoryChart','deptChart'],'category_department')">Download</button></div>
 <div class="chart-row">
@@ -416,6 +417,7 @@ function renderAll() {{
     renderPriorityChart();
     renderEntityChart();
     renderEntityUsersChart();
+    renderDeptUsersChart();
     renderCategoryChart();
     renderDeptChart();
     renderTable();
@@ -578,7 +580,20 @@ function renderEntityUsersChart() {{
     const eColors = {{'Automotive':'#58a6ff','Group Functions':'#a371f7','Financial Services':'#3fb950','Real Estate':'#f0883e','F&B':'#f778ba','N/A':'#8b949e'}};
     const euMax = Math.max(...sorted.map(s => s[1]));
     Plotly.react('entityUsersChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: sorted.map(s => eColors[s[0]] || '#79c0ff')}}, text: sorted.map(s => '<b>' + fmt(s[1]) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 11}}, cliponaxis: false}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Unique Users by Business Entity', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR, range: [0, euMax * 1.15]}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Users Supported by Business Entity', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR, range: [0, euMax * 1.15]}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+}}
+
+function renderDeptUsersChart() {{
+    const byDept = {{}};
+    filtered.forEach(r => {{
+        const dept = r.department || 'Unknown';
+        if (!byDept[dept]) byDept[dept] = new Set();
+        if (r.requester) byDept[dept].add(r.requester);
+    }});
+    const sorted = Object.entries(byDept).map(([k, v]) => [k, v.size]).sort((a, b) => a[1] - b[1]);
+    const duMax = Math.max(...sorted.map(s => s[1]));
+    Plotly.react('deptUsersChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: '#79c0ff'}}, text: sorted.map(s => '<b>' + fmt(s[1]) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}, cliponaxis: false}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Users Supported by Department', margin: {{t: 40, b: 10, l: 10, r: 60}}, height: Math.max(400, sorted.length * 22 + 60), xaxis: {{visible: false, gridcolor: GRID_COLOR, range: [0, duMax * 1.15]}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderCategoryChart() {{
