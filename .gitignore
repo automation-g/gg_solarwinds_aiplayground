@@ -22,3 +22,4 @@ ticket-tracker/build_tracker_extracted.mjs
 *.pdf
 *.xlsx
 *.csv
+!ticket-history/entity_mapping_full.csv

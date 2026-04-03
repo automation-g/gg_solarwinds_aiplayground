@@ -64,6 +64,26 @@ for inc in incidents:
     inc_id = number_to_id.get(inc["number"], 0)
     inc["minutes"] = tt_by_incident.get(inc_id, 0)
 
+# Load entity mapping from CSV
+import csv as _csv
+dept_entity_map = {}
+try:
+    with open(Path(__file__).parent / "entity_mapping_full.csv", "r", encoding="utf-8") as f:
+        reader = _csv.reader(f)
+        next(reader)
+        for row in reader:
+            dept = row[1].strip()
+            entity = row[4]
+            if dept and dept not in dept_entity_map:
+                dept_entity_map[dept] = entity
+except Exception:
+    pass
+
+# Add entity to each incident
+for inc in incidents:
+    dept = inc.get("department", "")
+    inc["entity"] = dept_entity_map.get(dept, "N/A") if dept else "N/A"
+
 # Get unique filter values
 departments = sorted(set(r["department"] for r in incidents if r["department"] and r["department"].strip()))
 sites = sorted(set(r["site"] for r in incidents if r["site"] and r["site"].strip()))
@@ -237,6 +257,7 @@ tr:hover {{ background: rgba(88,166,255,0.05); }}
                 <option value="Incident" selected>Incident</option>
                 <option value="Service Request" selected>Service Request</option>
                 <option value="Internal">Internal</option>
+                <option value="N/A">N/A</option>
             </select>
         </div>
         <div class="filter-group">
@@ -284,6 +305,7 @@ tr:hover {{ background: rgba(88,166,255,0.05); }}
     <div class="kpi-card"><div class="label">Closed</div><div class="value" id="kpiClosed">-</div><div class="bar" id="barClosed"></div></div>
     <div class="kpi-card"><div class="label">Open</div><div class="value" id="kpiOpen">-</div><div class="bar" id="barOpen"></div></div>
     <div class="kpi-card"><div class="label">Total Hours Logged</div><div class="value" id="kpiHours">-</div><div class="bar" style="background:#56d364;"></div></div>
+    <div class="kpi-card"><div class="label">Users Supported</div><div class="value" id="kpiUsers">-</div><div class="bar" style="background:#79c0ff;"></div></div>
 </div>
 
 <div class="section-title"><span>Ticket Volume Trends</span><button class="dl-btn" onclick="downloadChart('trendChart','ticket_volume_trends')">Download</button></div>
@@ -300,6 +322,9 @@ tr:hover {{ background: rgba(88,166,255,0.05); }}
     <div class="chart-third"><div class="chart-box"><div id="typeChart" style="height:400px;"></div></div></div>
     <div class="chart-third"><div class="chart-box"><div id="priorityChart" style="height:400px;"></div></div></div>
 </div>
+
+<div class="section-title"><span>Tickets by Business Entity</span><button class="dl-btn" onclick="downloadChart('entityChart','tickets_by_entity')">Download</button></div>
+<div class="chart-box"><div id="entityChart" style="height:400px;"></div></div>
 
 <div class="section-title"><span>Category & Department Breakdown</span><button class="dl-btn" onclick="downloadCharts(['categoryChart','deptChart'],'category_department')">Download</button></div>
 <div class="chart-row">
@@ -326,10 +351,12 @@ const ALL_DATA = {incidents_json};
 const TYPE_MAP = {{
     'Incident': ['INC - Application','INC - EndPoints','INC - IT Security','INC - IT Software Request ','INC - Infrastructure','INC - M365 ','INC - Networks '],
     'Service Request': ['SVC - Endpoint','SVC - IT Application ','SVC - IT Procurement ','SVC - Infrastructure Request ','SVC - Networks ','SVC- IT Access Request','SVC- IT Security ','SVC- IT Software Request ','HR Related','Project-Enhancement'],
-    'Internal': ['Internal']
+    'Internal': ['Internal', 'Alerts'],
+    'N/A': ['', null, undefined]
 }};
 const CHART_BG = '#222840';
 const fmt = (n) => n.toLocaleString();
+const fmtMonth = (m) => {{ const [y, mo] = m.split('-'); const mns = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return mns[parseInt(mo)-1] + ' ' + y; }};
 const GRID_COLOR = '#2d3352';
 
 let filtered = [];
@@ -342,11 +369,11 @@ function getSelected(id) {{
 }}
 
 function getTicketType(cat) {{
-    if (!cat) return 'Other';
+    if (!cat || cat.trim() === '') return 'N/A';
     if (cat.startsWith('INC ')) return 'Incident';
     if (cat.startsWith('SVC') || cat === 'HR Related' || cat === 'Project-Enhancement') return 'Service Request';
-    if (cat === 'Internal') return 'Internal';
-    return 'Other';
+    if (cat === 'Internal' || cat === 'Alerts') return 'Internal';
+    return 'N/A';
 }}
 
 function applyFilters() {{
@@ -359,13 +386,12 @@ function applyFilters() {{
     const cats = getSelected('filterCat');
     const assigns = getSelected('filterAssignee');
 
-    // Resolve types to categories
-    let typeCats = [];
-    types.forEach(t => {{ if (TYPE_MAP[t]) typeCats = typeCats.concat(TYPE_MAP[t]); }});
+    // Resolve types to allowed ticket types
+    const allowedTypes = types.length > 0 ? types : [];
 
     filtered = ALL_DATA.filter(r => {{
         if (r.created_date < dateFrom || r.created_date > dateTo) return false;
-        if (typeCats.length > 0 && !typeCats.includes(r.category)) return false;
+        if (allowedTypes.length > 0 && !allowedTypes.includes(getTicketType(r.category))) return false;
         if (cats.length > 0 && !cats.includes(r.category)) return false;
         if (depts.length > 0 && !depts.includes(r.department)) return false;
         if (states.length > 0 && !states.includes(r.state)) return false;
@@ -384,7 +410,7 @@ function resetFilters() {{
     ['filterType','filterDept','filterState','filterPriority','filterCat','filterAssignee'].forEach(id => {{
         const sel = document.getElementById(id);
         Array.from(sel.options).forEach(o => {{
-            o.selected = (id === 'filterType' && o.value !== 'Internal');
+            o.selected = (id === 'filterType' && o.value !== 'Internal' && o.value !== 'N/A');
         }});
     }});
     applyFilters();
@@ -396,6 +422,7 @@ function renderAll() {{
     renderBacklog();
     renderTypeChart();
     renderPriorityChart();
+    renderEntityChart();
     renderCategoryChart();
     renderDeptChart();
     renderTable();
@@ -414,6 +441,8 @@ function renderKPIs() {{
     document.getElementById('kpiClosed').textContent = closed.toLocaleString();
     document.getElementById('kpiOpen').textContent = open.toLocaleString();
     document.getElementById('kpiHours').textContent = Number(totalHours).toLocaleString(undefined, {{minimumFractionDigits: 1}});
+    const uniqueUsers = new Set(filtered.filter(r => r.requester).map(r => r.requester)).size;
+    document.getElementById('kpiUsers').textContent = uniqueUsers.toLocaleString();
     document.getElementById('ticketCount').textContent = total.toLocaleString() + ' tickets';
 
     const pct = (v) => Math.round(v / Math.max(total, 1) * 100);
@@ -440,10 +469,12 @@ function renderTrend(type) {{
             else if (t === 'Service Request') months[m].svc++;
         }});
         const keys = Object.keys(months).sort();
+        const monthLabels = keys.map(k => fmtMonth(k));
+        const mmMax = Math.max(...keys.map(k => Math.max(months[k].inc, months[k].svc)));
         Plotly.react('trendChart', [
-            {{x: keys, y: keys.map(k => months[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => fmt(months[k].inc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
-            {{x: keys, y: keys.map(k => months[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => fmt(months[k].svc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
-        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Month', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
+            {{x: monthLabels, y: keys.map(k => months[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => fmt(months[k].inc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
+            {{x: monthLabels, y: keys.map(k => months[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => fmt(months[k].svc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
+        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Month', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, range: [0, mmMax * 1.15]}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
     }} else if (type === 'weekly') {{
         const weeks = {{}};
         filtered.forEach(r => {{
@@ -458,10 +489,20 @@ function renderTrend(type) {{
             else if (t === 'Service Request') weeks[key].svc++;
         }});
         const keys = Object.keys(weeks).sort();
+        const mns = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        let prevYear = '';
+        const weekLabels = keys.map(k => {{
+            const [y, m, d] = k.split('-');
+            const yr = y.slice(2);
+            const label = mns[parseInt(m)-1] + ' ' + parseInt(d);
+            if (yr !== prevYear) {{ prevYear = yr; return label + ' ' + yr; }}
+            return label;
+        }});
+        const wMax = Math.max(...keys.map(k => Math.max(weeks[k].inc, weeks[k].svc)));
         Plotly.react('trendChart', [
-            {{x: keys, y: keys.map(k => weeks[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => fmt(weeks[k].inc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
-            {{x: keys, y: keys.map(k => weeks[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => fmt(weeks[k].svc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
-        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Week', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
+            {{x: weekLabels, y: keys.map(k => weeks[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => fmt(weeks[k].inc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
+            {{x: weekLabels, y: keys.map(k => weeks[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => fmt(weeks[k].svc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
+        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Week', barmode: 'group', margin: {{t: 50, b: 80, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR, type: 'category', tickangle: 0, dtick: keys.length > 26 ? 4 : 1}}, yaxis: {{gridcolor: GRID_COLOR, range: [0, wMax * 1.1]}}, legend: {{orientation: 'h', y: 1.12, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
     }} else {{
         const days = {{}};
         filtered.forEach(r => {{
@@ -472,10 +513,11 @@ function renderTrend(type) {{
             else if (t === 'Service Request') days[d].svc++;
         }});
         const keys = Object.keys(days).sort();
+        const ddMax = Math.max(...keys.map(k => Math.max(days[k].inc, days[k].svc)));
         Plotly.react('trendChart', [
-            {{x: keys, y: keys.map(k => days[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => fmt(days[k].inc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
-            {{x: keys, y: keys.map(k => days[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => fmt(days[k].svc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
-        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Day', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
+            {{x: keys, y: keys.map(k => days[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => fmt(days[k].inc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
+            {{x: keys, y: keys.map(k => days[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => fmt(days[k].svc)), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
+        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Day', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, range: [0, ddMax * 1.15]}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
     }}
 }}
 
@@ -519,6 +561,19 @@ function renderPriorityChart() {{
         {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Priority Breakdown', margin: {{t: 40, b: 10, l: 50, r: 10}}, showlegend: true, legend: {{font: {{size: 10, color: '#c9d1d9'}}, orientation: 'v', x: 1, y: 0.5, xanchor: 'left'}}, annotations: [{{text: '<b>' + filtered.length.toLocaleString() + '</b>', x: 0.5, y: 0.5, showarrow: false, font: {{size: 18, color: '#fff'}}}}]}}, {{responsive: true, displayModeBar: false}});
 }}
 
+function renderEntityChart() {{
+    const byEntity = {{}};
+    filtered.forEach(r => {{
+        const e = r.entity || 'N/A';
+        byEntity[e] = (byEntity[e] || 0) + 1;
+    }});
+    const sorted = Object.entries(byEntity).sort((a, b) => a[1] - b[1]);
+    const eColors = {{'Automotive':'#58a6ff','Group Functions':'#a371f7','Financial Services':'#3fb950','Real Estate':'#f0883e','F&B':'#f778ba','N/A':'#8b949e'}};
+    const eMax = Math.max(...sorted.map(s => s[1]));
+    Plotly.react('entityChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: sorted.map(s => eColors[s[0]] || '#79c0ff')}}, text: sorted.map(s => fmt(s[1])), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 11}}, cliponaxis: false}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Tickets by Business Entity', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR, range: [0, eMax * 1.15]}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+}}
+
 function renderCategoryChart() {{
     const byCat = {{}};
     filtered.forEach(r => {{ if (r.category) byCat[r.category] = (byCat[r.category] || 0) + 1; }});
@@ -530,9 +585,9 @@ function renderCategoryChart() {{
 function renderDeptChart() {{
     const byDept = {{}};
     filtered.forEach(r => {{ if (r.department) byDept[r.department] = (byDept[r.department] || 0) + 1; }});
-    const sorted = Object.entries(byDept).sort((a, b) => b[1] - a[1]).slice(0, 15).reverse();
+    const sorted = Object.entries(byDept).sort((a, b) => b[1] - a[1]).slice(0, 20).reverse();
     Plotly.react('deptChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: '#58a6ff'}}, text: sorted.map(s => fmt(s[1])), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}, cliponaxis: false}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Top 15 Departments', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Top 20 Departments', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderPriDeptChart() {{

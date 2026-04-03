@@ -291,7 +291,7 @@ def query_ticket_type_breakdown(where, params):
             CASE
                 WHEN category LIKE 'INC -%' THEN 'Incident'
                 WHEN category LIKE 'SVC%' OR category = 'HR Related' OR category = 'Project-Enhancement' THEN 'Service Request'
-                WHEN category = 'Internal' THEN 'Internal'
+                WHEN category IN ('Internal', 'Alerts') THEN 'Internal'
                 ELSE 'Other'
             END as ticket_type,
             COUNT(*) as cnt
@@ -388,7 +388,8 @@ TICKET_TYPE_MAP = {
         "SVC- IT Security ", "SVC- IT Software Request ", "HR Related",
         "Project-Enhancement",
     ],
-    "Internal": ["Internal"],
+    "Internal": ["Internal", "Alerts"],
+    "N/A": [""],
 }
 
 DEFAULT_TYPES = ["Incident", "Service Request"]
@@ -443,7 +444,7 @@ with st.expander("Filters", expanded=True):
     with fc2:
         if "f_type" not in st.session_state:
             st.session_state["f_type"] = DEFAULT_TYPES
-        st.multiselect("Ticket Type", ["Incident", "Service Request", "Internal"], key="f_type")
+        st.multiselect("Ticket Type", ["Incident", "Service Request", "Internal", "N/A"], key="f_type")
     with fc3:
         st.multiselect("Department", opts["department"], key="f_dept")
     with fc4:
