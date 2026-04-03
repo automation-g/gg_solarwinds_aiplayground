@@ -26,7 +26,8 @@ rows = conn.execute("""
            substr(created_at, 1, 10) as created_date,
            substr(created_at, 1, 7) as month,
            substr(updated_at, 1, 10) as updated_date,
-           substr(resolved_at, 1, 10) as resolved_date
+           substr(resolved_at, 1, 10) as resolved_date,
+           COALESCE(entity, 'N/A') as entity
     FROM incidents
     WHERE created_at >= '2025-03-01'
     ORDER BY created_at DESC
@@ -34,7 +35,7 @@ rows = conn.execute("""
 
 cols = ["number", "name", "state", "priority", "category", "subcategory",
         "assignee", "requester", "site", "department",
-        "is_svc", "is_escalated", "created_date", "month", "updated_date", "resolved_date"]
+        "is_svc", "is_escalated", "created_date", "month", "updated_date", "resolved_date", "entity", "entity"]
 
 incidents = [dict(zip(cols, r)) for r in rows]
 print(f"Loaded {len(incidents):,} incidents")
@@ -64,25 +65,7 @@ for inc in incidents:
     inc_id = number_to_id.get(inc["number"], 0)
     inc["minutes"] = tt_by_incident.get(inc_id, 0)
 
-# Load entity mapping from CSV
-import csv as _csv
-dept_entity_map = {}
-try:
-    with open(Path(__file__).parent / "entity_mapping_full.csv", "r", encoding="utf-8") as f:
-        reader = _csv.reader(f)
-        next(reader)
-        for row in reader:
-            dept = row[1].strip()
-            entity = row[4]
-            if dept and dept not in dept_entity_map:
-                dept_entity_map[dept] = entity
-except Exception:
-    pass
-
-# Add entity to each incident
-for inc in incidents:
-    dept = inc.get("department", "")
-    inc["entity"] = dept_entity_map.get(dept, "N/A") if dept else "N/A"
+# Entity is now loaded directly from DB
 
 # Get unique filter values
 departments = sorted(set(r["department"] for r in incidents if r["department"] and r["department"].strip()))

@@ -148,6 +148,17 @@ def sync_recent(days_back: int | None = None, on_progress: Callable | None = Non
             progress(_progress_msg())
 
     conn.commit()
+
+    # Assign entity from entity_mapping table
+    conn.execute("""
+        UPDATE incidents SET entity = COALESCE(
+            (SELECT em.entity FROM entity_mapping em WHERE em.department = incidents.department),
+            'N/A'
+        )
+        WHERE entity IS NULL OR entity = 'N/A'
+    """)
+    conn.commit()
+
     total = conn.execute("SELECT COUNT(*) FROM incidents").fetchone()[0]
 
     # Save sync timestamp
