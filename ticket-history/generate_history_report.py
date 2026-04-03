@@ -20,22 +20,24 @@ conn = sqlite3.connect(str(DB_PATH))
 
 print("Loading incidents...")
 rows = conn.execute("""
-    SELECT number, name, state, priority, category, subcategory,
-           assignee_name, requester_name, site, department,
-           is_service_request, is_escalated,
-           substr(created_at, 1, 10) as created_date,
-           substr(created_at, 1, 7) as month,
-           substr(updated_at, 1, 10) as updated_date,
-           substr(resolved_at, 1, 10) as resolved_date,
-           COALESCE(entity, 'N/A') as entity
-    FROM incidents
-    WHERE created_at >= '2025-03-01'
-    ORDER BY created_at DESC
+    SELECT i.number, i.name, i.state, i.priority, i.category, i.subcategory,
+           i.assignee_name, i.requester_name, i.site, i.department,
+           i.is_service_request, i.is_escalated,
+           substr(i.created_at, 1, 10) as created_date,
+           substr(i.created_at, 1, 7) as month,
+           substr(i.updated_at, 1, 10) as updated_date,
+           substr(i.resolved_at, 1, 10) as resolved_date,
+           COALESCE(i.entity, 'N/A') as entity,
+           COALESCE(u.entity, 'N/A') as requester_entity
+    FROM incidents i
+    LEFT JOIN (SELECT name, entity, MIN(id) as id FROM users GROUP BY name) u ON i.requester_name = u.name
+    WHERE i.created_at >= '2025-03-01'
+    ORDER BY i.created_at DESC
 """).fetchall()
 
 cols = ["number", "name", "state", "priority", "category", "subcategory",
         "assignee", "requester", "site", "department",
-        "is_svc", "is_escalated", "created_date", "month", "updated_date", "resolved_date", "entity", "entity"]
+        "is_svc", "is_escalated", "created_date", "month", "updated_date", "resolved_date", "entity", "requester_entity"]
 
 incidents = [dict(zip(cols, r)) for r in rows]
 print(f"Loaded {len(incidents):,} incidents")
@@ -310,8 +312,11 @@ tr:hover {{ background: rgba(88,166,255,0.05); }}
     <div class="chart-third"><div class="chart-box"><div id="priorityChart" style="height:400px;"></div></div></div>
 </div>
 
-<div class="section-title"><span>Tickets by Business Entity</span><button class="dl-btn" onclick="downloadChart('entityChart','tickets_by_entity')">Download</button></div>
-<div class="chart-box"><div id="entityChart" style="height:400px;"></div></div>
+<div class="section-title"><span>Tickets by Business Entity</span><button class="dl-btn" onclick="downloadCharts(['entityChart','entityUsersChart'],'business_entity')">Download</button></div>
+<div class="chart-row">
+    <div class="chart-half"><div class="chart-box"><div id="entityChart" style="height:400px;"></div></div></div>
+    <div class="chart-half"><div class="chart-box"><div id="entityUsersChart" style="height:400px;"></div></div></div>
+</div>
 
 <div class="section-title"><span>Category & Department Breakdown</span><button class="dl-btn" onclick="downloadCharts(['categoryChart','deptChart'],'category_department')">Download</button></div>
 <div class="chart-row">
@@ -410,6 +415,7 @@ function renderAll() {{
     renderTypeChart();
     renderPriorityChart();
     renderEntityChart();
+    renderEntityUsersChart();
     renderCategoryChart();
     renderDeptChart();
     renderTable();
@@ -559,6 +565,20 @@ function renderEntityChart() {{
     const eMax = Math.max(...sorted.map(s => s[1]));
     Plotly.react('entityChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: sorted.map(s => eColors[s[0]] || '#79c0ff')}}, text: sorted.map(s => fmt(s[1])), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 11}}, cliponaxis: false}}],
         {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Tickets by Business Entity', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR, range: [0, eMax * 1.15]}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+}}
+
+function renderEntityUsersChart() {{
+    const byEntity = {{}};
+    filtered.forEach(r => {{
+        const e = r.requester_entity || 'N/A';
+        if (!byEntity[e]) byEntity[e] = new Set();
+        if (r.requester) byEntity[e].add(r.requester);
+    }});
+    const sorted = Object.entries(byEntity).map(([k, v]) => [k, v.size]).sort((a, b) => a[1] - b[1]);
+    const eColors = {{'Automotive':'#58a6ff','Group Functions':'#a371f7','Financial Services':'#3fb950','Real Estate':'#f0883e','F&B':'#f778ba','N/A':'#8b949e'}};
+    const euMax = Math.max(...sorted.map(s => s[1]));
+    Plotly.react('entityUsersChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: sorted.map(s => eColors[s[0]] || '#79c0ff')}}, text: sorted.map(s => '<b>' + fmt(s[1]) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 11}}, cliponaxis: false}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Unique Users by Business Entity', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR, range: [0, euMax * 1.15]}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderCategoryChart() {{
