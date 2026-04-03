@@ -28,16 +28,17 @@ rows = conn.execute("""
            substr(i.updated_at, 1, 10) as updated_date,
            substr(i.resolved_at, 1, 10) as resolved_date,
            COALESCE(i.entity, 'N/A') as entity,
-           COALESCE(u.entity, 'N/A') as requester_entity
+           COALESCE(u.entity, 'N/A') as requester_entity,
+           COALESCE(u.department, '') as requester_dept
     FROM incidents i
-    LEFT JOIN (SELECT name, entity, MIN(id) as id FROM users GROUP BY name) u ON i.requester_name = u.name
+    LEFT JOIN (SELECT name, entity, department, MIN(id) as id FROM users GROUP BY name) u ON i.requester_name = u.name
     WHERE i.created_at >= '2025-03-01'
     ORDER BY i.created_at DESC
 """).fetchall()
 
 cols = ["number", "name", "state", "priority", "category", "subcategory",
         "assignee", "requester", "site", "department",
-        "is_svc", "is_escalated", "created_date", "month", "updated_date", "resolved_date", "entity", "requester_entity"]
+        "is_svc", "is_escalated", "created_date", "month", "updated_date", "resolved_date", "entity", "requester_entity", "requester_dept"]
 
 incidents = [dict(zip(cols, r)) for r in rows]
 print(f"Loaded {len(incidents):,} incidents")
@@ -586,7 +587,7 @@ function renderEntityUsersChart() {{
 function renderDeptUsersChart() {{
     const byDept = {{}};
     filtered.forEach(r => {{
-        const dept = r.department || 'Unknown';
+        const dept = r.requester_dept || 'Unknown';
         if (!byDept[dept]) byDept[dept] = new Set();
         if (r.requester) byDept[dept].add(r.requester);
     }});
