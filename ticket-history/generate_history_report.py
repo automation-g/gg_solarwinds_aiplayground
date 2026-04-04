@@ -29,7 +29,9 @@ rows = conn.execute("""
            substr(i.resolved_at, 1, 10) as resolved_date,
            COALESCE(i.entity, 'N/A') as entity,
            COALESCE(u.entity, 'N/A') as requester_entity,
-           COALESCE(u.department, '') as requester_dept
+           COALESCE(u.department, '') as requester_dept,
+           i.created_at as created_at_full,
+           i.resolved_at as resolved_at_full
     FROM incidents i
     LEFT JOIN (SELECT name, entity, department, MIN(id) as id FROM users GROUP BY name) u ON i.requester_name = u.name
     WHERE i.created_at >= '2025-03-01'
@@ -38,7 +40,7 @@ rows = conn.execute("""
 
 cols = ["number", "name", "state", "priority", "category", "subcategory",
         "assignee", "requester", "site", "department",
-        "is_svc", "is_escalated", "created_date", "month", "updated_date", "resolved_date", "entity", "requester_entity", "requester_dept"]
+        "is_svc", "is_escalated", "created_date", "month", "updated_date", "resolved_date", "entity", "requester_entity", "requester_dept", "created_at_full", "resolved_at_full"]
 
 incidents = [dict(zip(cols, r)) for r in rows]
 print(f"Loaded {len(incidents):,} incidents")
@@ -69,6 +71,38 @@ for inc in incidents:
     inc["minutes"] = tt_by_incident.get(inc_id, 0)
 
 # Entity is now loaded directly from DB
+
+# Calculate resolution hours and extract hour/day for peak demand
+from datetime import datetime as _dt
+for inc in incidents:
+    # Resolution hours
+    ca = inc.get("created_at_full", "")
+    ra = inc.get("resolved_at_full", "")
+    if ca and ra and len(ca) >= 19 and len(ra) >= 19:
+        try:
+            created = _dt.fromisoformat(ca[:19])
+            resolved = _dt.fromisoformat(ra[:19])
+            diff = (resolved - created).total_seconds() / 3600
+            inc["res_hours"] = round(diff, 1) if diff >= 0 else None
+        except Exception:
+            inc["res_hours"] = None
+    else:
+        inc["res_hours"] = None
+    # Hour of day and day of week from created_at
+    if ca and len(ca) >= 16:
+        try:
+            dt = _dt.fromisoformat(ca[:19])
+            inc["hour"] = dt.hour
+            inc["dow"] = dt.weekday()  # 0=Mon, 6=Sun
+        except Exception:
+            inc["hour"] = None
+            inc["dow"] = None
+    else:
+        inc["hour"] = None
+        inc["dow"] = None
+    # Remove full timestamps to save space in JSON
+    del inc["created_at_full"]
+    del inc["resolved_at_full"]
 
 # Get unique filter values
 departments = sorted(set(r["department"] for r in incidents if r["department"] and r["department"].strip()))
@@ -115,23 +149,23 @@ html = f"""<!DOCTYPE html>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <style>
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1e2e; color: #c9d1d9; }}
+body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #e0e0e0; }}
 
 .container {{ max-width: 1400px; margin: 0 auto; padding: 16px; }}
 
 .header {{
-    background: #222840; border: 1px solid #2d3352; border-radius: 10px;
+    background: #16213e; border: 1px solid #0f3460; border-radius: 10px;
     padding: 16px 24px; margin-bottom: 16px;
     display: flex; justify-content: space-between; align-items: center;
 }}
-.header h1 {{ color: #fff; font-size: 1.3rem; font-weight: 600; }}
+.header h1 {{ color: #fff; font-size: 1.3rem; font-weight: 600; font-family: Cambria, serif; }}
 .header .breadcrumb {{ color: #8b949e; font-size: 0.75rem; margin-bottom: 4px; }}
 .header .meta {{ text-align: right; color: #8b949e; font-size: 0.7rem; }}
 .header .ticket-count {{ color: #58a6ff; font-size: 0.85rem; }}
 
 .sync-row {{ display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }}
 .sync-btn {{
-    background: #58a6ff; color: #fff; border: none; border-radius: 6px;
+    background: #58a6ff; color: #1a1a2e; border: none; border-radius: 6px;
     padding: 8px 20px; font-size: 0.85rem; cursor: pointer; font-weight: 600;
 }}
 .sync-btn:hover {{ background: #79c0ff; }}
@@ -139,72 +173,72 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
 #syncStatus {{ color: #3fb950; font-size: 0.8rem; margin-left: 12px; display: none; }}
 
 .filter-bar {{
-    background: #222840; border: 1px solid #2d3352; border-radius: 10px;
+    background: #16213e; border: 1px solid #0f3460; border-radius: 10px;
     padding: 16px 20px; margin-bottom: 16px;
 }}
 .filter-row {{ display: flex; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }}
 .filter-group {{ flex: 1; min-width: 200px; }}
 .filter-group label {{ display: block; color: #8b949e; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }}
 .filter-group select, .filter-group input {{
-    width: 100%; padding: 6px 10px; background: #1a1e2e; color: #c9d1d9;
-    border: 1px solid #2d3352; border-radius: 6px; font-size: 0.85rem;
+    width: 100%; padding: 6px 10px; background: #0f3460; color: #e0e0e0;
+    border: 1px solid #1a3a6e; border-radius: 6px; font-size: 0.85rem;
 }}
 .filter-group select {{ height: 34px; }}
 .filter-group select[multiple] {{ height: 80px; }}
 .btn-row {{ display: flex; gap: 8px; margin-top: 10px; }}
 .btn-apply {{
-    background: #58a6ff; color: #fff; border: none; border-radius: 6px;
+    background: #58a6ff; color: #1a1a2e; border: none; border-radius: 6px;
     padding: 8px 20px; cursor: pointer; font-size: 0.85rem; font-weight: 600;
 }}
 .btn-apply:hover {{ background: #79c0ff; }}
 .btn-reset {{
-    background: #2d3352; color: #c9d1d9; border: 1px solid #2d3352; border-radius: 6px;
+    background: #0f3460; color: #e0e0e0; border: 1px solid #1a3a6e; border-radius: 6px;
     padding: 8px 20px; cursor: pointer; font-size: 0.85rem;
 }}
-.btn-reset:hover {{ background: #3d4562; }}
+.btn-reset:hover {{ background: #1a3a6e; }}
 
 .kpi-row {{ display: flex; gap: 12px; margin-bottom: 16px; }}
 .kpi-card {{
-    background: #222840; border: 1px solid #2d3352; border-radius: 10px;
+    background: #16213e; border: 1px solid #0f3460; border-radius: 10px;
     padding: 14px 18px; flex: 1; min-width: 0;
 }}
 .kpi-card .label {{ color: #8b949e; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }}
 .kpi-card .value {{ color: #fff; font-size: 1.6rem; font-weight: 700; }}
 .kpi-card .bar {{ height: 3px; border-radius: 2px; margin-top: 6px; }}
 
-.section-title {{ color: #fff; font-size: 1rem; font-weight: 600; margin: 20px 0 10px; display: flex; justify-content: space-between; align-items: center; }}
-.dl-btn {{ background: none; border: 1px solid #2d3352; color: #8b949e; border-radius: 4px; padding: 4px 10px; font-size: 0.7rem; cursor: pointer; }}
-.dl-btn:hover {{ background: #2d3352; color: #fff; }}
+.section-title {{ color: #e0e0e0; font-size: 1rem; font-weight: 600; margin: 20px 0 10px; font-family: Cambria, serif; display: flex; justify-content: space-between; align-items: center; }}
+.dl-btn {{ background: none; border: 1px solid #0f3460; color: #8b949e; border-radius: 4px; padding: 4px 10px; font-size: 0.7rem; cursor: pointer; }}
+.dl-btn:hover {{ background: #0f3460; color: #fff; }}
 
-.tabs {{ display: flex; gap: 0; background: #222840; border-radius: 8px; padding: 4px; margin-bottom: 12px; width: fit-content; }}
+.tabs {{ display: flex; gap: 0; background: #16213e; border-radius: 8px; padding: 4px; margin-bottom: 12px; width: fit-content; }}
 .tab-btn {{
     font-weight: 700;
     background: transparent; color: #8b949e; border: none; border-radius: 6px;
     padding: 8px 16px; font-size: 0.85rem; cursor: pointer;
 }}
-.tab-btn.active {{ background: #2d3352; color: #fff; }}
+.tab-btn.active {{ background: #2d3352; color: #1a1a2e; }}
 
 .chart-row {{ display: flex; gap: 16px; margin-bottom: 16px; }}
 .chart-half {{ flex: 1; min-width: 0; }}
 .chart-third {{ flex: 1; min-width: 0; }}
 .chart-full {{ width: 100%; }}
-.chart-box {{ background: #222840; border: 1px solid #2d3352; border-radius: 10px; padding: 12px; }}
+.chart-box {{ background: #ffffff; border: 1px solid #e0e3eb; border-radius: 10px; padding: 12px; }}
 
-.table-section {{ background: #222840; border: 1px solid #2d3352; border-radius: 10px; padding: 16px; margin-top: 16px; }}
+.table-section {{ background: #ffffff; border: 1px solid #e0e3eb; border-radius: 10px; padding: 16px; margin-top: 16px; }}
 .search-box {{
-    width: 100%; padding: 8px 12px; background: #1a1e2e; color: #c9d1d9;
-    border: 1px solid #2d3352; border-radius: 6px; font-size: 0.85rem; margin-bottom: 12px;
+    width: 100%; padding: 8px 12px; background: #fff; color: #333;
+    border: 1px solid #1a3a6e; border-radius: 6px; font-size: 0.85rem; margin-bottom: 12px;
 }}
 table {{ width: 100%; border-collapse: collapse; font-size: 0.8rem; }}
-th {{ text-align: left; padding: 8px 10px; color: #8b949e; border-bottom: 1px solid #2d3352; font-weight: 600; text-transform: uppercase; font-size: 0.7rem; position: sticky; top: 0; background: #222840; z-index: 1; }}
-td {{ padding: 6px 10px; border-bottom: 1px solid #2d3352; color: #c9d1d9; }}
-tr:hover {{ background: rgba(88,166,255,0.05); }}
+th {{ text-align: left; padding: 8px 10px; color: #666; border-bottom: 1px solid #e0e3eb; font-weight: 600; text-transform: uppercase; font-size: 0.7rem; position: sticky; top: 0; background: #ffffff; z-index: 1; z-index: 1; }}
+td {{ padding: 6px 10px; border-bottom: 1px solid #e0e3eb; color: #333; }}
+tr:hover {{ background: rgba(88,166,255,0.08); }}
 .page-nav {{ display: flex; align-items: center; gap: 12px; margin-top: 10px; }}
-.page-btn {{ background: #2d3352; color: #c9d1d9; border: none; border-radius: 6px; padding: 6px 16px; cursor: pointer; font-size: 0.8rem; }}
+.page-btn {{ background: #2d3352; color: #333; border: none; border-radius: 6px; padding: 6px 16px; cursor: pointer; font-size: 0.8rem; }}
 .page-btn:disabled {{ opacity: 0.4; cursor: not-allowed; }}
 .page-info {{ color: #8b949e; font-size: 0.8rem; }}
 .export-btn {{
-    background: #238636; color: #fff; border: none; border-radius: 6px;
+    background: #238636; color: #1a1a2e; border: none; border-radius: 6px;
     padding: 8px 20px; cursor: pointer; font-size: 0.85rem; margin-top: 10px;
 }}
 .export-btn:hover {{ background: #2ea043; }}
@@ -294,8 +328,11 @@ tr:hover {{ background: rgba(88,166,255,0.05); }}
     <div class="kpi-card"><div class="label">Resolved</div><div class="value" id="kpiResolved">-</div><div class="bar" id="barResolved"></div></div>
     <div class="kpi-card"><div class="label">Closed</div><div class="value" id="kpiClosed">-</div><div class="bar" id="barClosed"></div></div>
     <div class="kpi-card"><div class="label">Open</div><div class="value" id="kpiOpen">-</div><div class="bar" id="barOpen"></div></div>
-    <div class="kpi-card"><div class="label">Total Hours Logged</div><div class="value" id="kpiHours">-</div><div class="bar" style="background:#56d364;"></div></div>
-    <div class="kpi-card"><div class="label">Users Supported</div><div class="value" id="kpiUsers">-</div><div class="bar" style="background:#79c0ff;"></div></div>
+    <div class="kpi-card"><div class="label">Hours Logged</div><div class="value" id="kpiHours">-</div><div class="bar" style="background:#56d364;"></div></div>
+    <div class="kpi-card"><div class="label">Users</div><div class="value" id="kpiUsers">-</div><div class="bar" style="background:#79c0ff;"></div></div>
+    <div class="kpi-card"><div class="label">Avg Time/Ticket</div><div class="value" id="kpiResTime">-</div><div class="bar" style="background:#d2a8ff;"></div></div>
+    <div class="kpi-card"><div class="label">Avg Time (INC)</div><div class="value" id="kpiIncTime">-</div><div class="bar" style="background:#ff7b72;"></div></div>
+    <div class="kpi-card"><div class="label">Avg Time (SVC)</div><div class="value" id="kpiSvcTime">-</div><div class="bar" style="background:#58a6ff;"></div></div>
 </div>
 
 <div class="section-title"><span>Ticket Volume Trends</span><button class="dl-btn" onclick="downloadChart('trendChart','ticket_volume_trends')">Download</button></div>
@@ -318,7 +355,17 @@ tr:hover {{ background: rgba(88,166,255,0.05); }}
     <div class="chart-half"><div class="chart-box"><div id="entityChart" style="height:400px;"></div></div></div>
     <div class="chart-half"><div class="chart-box"><div id="entityUsersChart" style="height:400px;"></div></div></div>
 </div>
-<div class="chart-box" style="margin-top:16px;max-height:450px;overflow-y:auto;"><div id="deptUsersChart"></div></div>
+<div style="margin-top:16px;display:flex;justify-content:flex-end;"><button class="dl-btn" onclick="downloadDeptUsersChart()">Download Full Chart</button></div>
+<div class="chart-box" style="margin-top:8px;overflow-x:auto;"><div id="deptUsersChart" style="height:450px;"></div></div>
+
+<div class="section-title"><span>Agent Time per Ticket</span><button class="dl-btn" onclick="downloadCharts(['resPriorityChart','resEntityChart'],'resolution_performance')">Download</button></div>
+<div class="chart-row">
+    <div class="chart-half"><div class="chart-box"><div id="resPriorityChart" style="height:400px;"></div></div></div>
+    <div class="chart-half"><div class="chart-box"><div id="resEntityChart" style="height:400px;"></div></div></div>
+</div>
+
+<div class="section-title"><span>Peak Demand Periods</span><button class="dl-btn" onclick="downloadChart('peakHeatmap','peak_demand')">Download</button></div>
+<div class="chart-box"><div id="peakHeatmap" style="height:400px;"></div></div>
 
 <div class="section-title"><span>Category & Department Breakdown</span><button class="dl-btn" onclick="downloadCharts(['categoryChart','deptChart'],'category_department')">Download</button></div>
 <div class="chart-row">
@@ -348,10 +395,10 @@ const TYPE_MAP = {{
     'Internal': ['Internal', 'Alerts'],
     'N/A': ['', null, undefined]
 }};
-const CHART_BG = '#222840';
+const CHART_BG = '#ffffff';
 const fmt = (n) => n.toLocaleString();
 const fmtMonth = (m) => {{ const [y, mo] = m.split('-'); const mns = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return mns[parseInt(mo)-1] + ' ' + y; }};
-const GRID_COLOR = '#2d3352';
+const GRID_COLOR = '#e0e3eb';
 
 let filtered = [];
 let currentPage = 1;
@@ -419,6 +466,9 @@ function renderAll() {{
     renderEntityChart();
     renderEntityUsersChart();
     renderDeptUsersChart();
+    renderResPriorityChart();
+    renderResEntityChart();
+    renderPeakHeatmap();
     renderCategoryChart();
     renderDeptChart();
     renderTable();
@@ -439,6 +489,15 @@ function renderKPIs() {{
     document.getElementById('kpiHours').textContent = Number(totalHours).toLocaleString(undefined, {{minimumFractionDigits: 1}});
     const uniqueUsers = new Set(filtered.filter(r => r.requester).map(r => r.requester)).size;
     document.getElementById('kpiUsers').textContent = uniqueUsers.toLocaleString();
+    const withTime = filtered.filter(r => r.minutes > 0);
+    const avgMins = withTime.length > 0 ? Math.round(withTime.reduce((s, r) => s + r.minutes, 0) / withTime.length) : 0;
+    document.getElementById('kpiResTime').textContent = avgMins > 0 ? avgMins + ' min' : '-';
+    const incTime = withTime.filter(r => getTicketType(r.category) === 'Incident');
+    const avgInc = incTime.length > 0 ? Math.round(incTime.reduce((s, r) => s + r.minutes, 0) / incTime.length) : 0;
+    document.getElementById('kpiIncTime').textContent = avgInc > 0 ? avgInc + ' min' : '-';
+    const svcTime = withTime.filter(r => getTicketType(r.category) === 'Service Request');
+    const avgSvc = svcTime.length > 0 ? Math.round(svcTime.reduce((s, r) => s + r.minutes, 0) / svcTime.length) : 0;
+    document.getElementById('kpiSvcTime').textContent = avgSvc > 0 ? avgSvc + ' min' : '-';
     document.getElementById('ticketCount').textContent = total.toLocaleString() + ' tickets';
 
     const pct = (v) => Math.round(v / Math.max(total, 1) * 100);
@@ -468,9 +527,9 @@ function renderTrend(type) {{
         const monthLabels = keys.map(k => fmtMonth(k));
         const mmMax = Math.max(...keys.map(k => Math.max(months[k].inc, months[k].svc)));
         Plotly.react('trendChart', [
-            {{x: monthLabels, y: keys.map(k => months[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => '<b>' + fmt(months[k].inc) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
-            {{x: monthLabels, y: keys.map(k => months[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => '<b>' + fmt(months[k].svc) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 9}}}},
-        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Month', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, range: [0, mmMax * 1.15], showticklabels: false}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
+            {{x: monthLabels, y: keys.map(k => months[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => '<b>' + fmt(months[k].inc) + '</b>'), textposition: 'outside', textfont: {{color: '#333', size: 9}}}},
+            {{x: monthLabels, y: keys.map(k => months[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => '<b>' + fmt(months[k].svc) + '</b>'), textposition: 'outside', textfont: {{color: '#333', size: 9}}}},
+        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Incident vs Service Request per Month', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{showgrid: false}}, yaxis: {{showgrid: false, range: [0, mmMax * 1.15], showticklabels: false}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#333'}}}}}}, {{responsive: true, displayModeBar: false}});
     }} else if (type === 'weekly') {{
         const weeks = {{}};
         filtered.forEach(r => {{
@@ -496,9 +555,9 @@ function renderTrend(type) {{
         }});
         const wMax = Math.max(...keys.map(k => Math.max(weeks[k].inc, weeks[k].svc)));
         Plotly.react('trendChart', [
-            {{x: weekLabels, y: keys.map(k => weeks[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => '<b>' + fmt(weeks[k].inc) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
-            {{x: weekLabels, y: keys.map(k => weeks[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => '<b>' + fmt(weeks[k].svc) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
-        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Week', barmode: 'group', margin: {{t: 50, b: 80, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR, type: 'category', tickangle: 0, dtick: keys.length > 26 ? 4 : 1}}, yaxis: {{gridcolor: GRID_COLOR, range: [0, wMax * 1.1], showticklabels: false}}, legend: {{orientation: 'h', y: 1.12, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
+            {{x: weekLabels, y: keys.map(k => weeks[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => '<b>' + fmt(weeks[k].inc) + '</b>'), textposition: 'outside', textfont: {{color: '#333', size: 8}}}},
+            {{x: weekLabels, y: keys.map(k => weeks[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => '<b>' + fmt(weeks[k].svc) + '</b>'), textposition: 'outside', textfont: {{color: '#333', size: 8}}}},
+        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Incident vs Service Request per Week', barmode: 'group', margin: {{t: 50, b: 80, l: 40, r: 10}}, xaxis: {{showgrid: false, type: 'category', tickangle: 0, dtick: keys.length > 26 ? 4 : 1}}, yaxis: {{showgrid: false, range: [0, wMax * 1.1], showticklabels: false}}, legend: {{orientation: 'h', y: 1.12, font: {{color: '#333'}}}}}}, {{responsive: true, displayModeBar: false}});
     }} else {{
         const days = {{}};
         filtered.forEach(r => {{
@@ -511,9 +570,9 @@ function renderTrend(type) {{
         const keys = Object.keys(days).sort();
         const ddMax = Math.max(...keys.map(k => Math.max(days[k].inc, days[k].svc)));
         Plotly.react('trendChart', [
-            {{x: keys, y: keys.map(k => days[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => '<b>' + fmt(days[k].inc) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
-            {{x: keys, y: keys.map(k => days[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => '<b>' + fmt(days[k].svc) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 8}}}},
-        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request per Day', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, range: [0, ddMax * 1.15], showticklabels: false}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
+            {{x: keys, y: keys.map(k => days[k].inc), name: 'Incident', type: 'bar', marker: {{color: '#ff7b72'}}, text: keys.map(k => '<b>' + fmt(days[k].inc) + '</b>'), textposition: 'outside', textfont: {{color: '#333', size: 8}}}},
+            {{x: keys, y: keys.map(k => days[k].svc), name: 'Service Request', type: 'bar', marker: {{color: '#58a6ff'}}, text: keys.map(k => '<b>' + fmt(days[k].svc) + '</b>'), textposition: 'outside', textfont: {{color: '#333', size: 8}}}},
+        ], {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Incident vs Service Request per Day', barmode: 'group', margin: {{t: 40, b: 30, l: 40, r: 10}}, xaxis: {{showgrid: false}}, yaxis: {{showgrid: false, range: [0, ddMax * 1.15], showticklabels: false}}, legend: {{orientation: 'h', y: 1.1, font: {{color: '#333'}}}}}}, {{responsive: true, displayModeBar: false}});
     }}
 }}
 
@@ -525,8 +584,9 @@ function renderBacklog() {{
     const labels = [fmt(open) + ' Open', fmt(closed) + ' Closed', fmt(resolved) + ' Resolved'];
     const values = [open, closed, resolved];
     const colors = ['#f0883e', '#a371f7', '#3fb950'];
-    Plotly.react('backlogChart', [{{labels, values, type: 'pie', hole: 0.5, marker: {{colors}}, textinfo: 'label', textposition: 'auto', textfont: {{color: '#fff', size: 11}}, outsidetextfont: {{color: '#c9d1d9', size: 10}}}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Open vs Closed / Resolved', margin: {{t: 40, b: 40, l: 10, r: 10}}, showlegend: true, legend: {{font: {{size: 10, color: '#c9d1d9'}}, orientation: 'v', x: 1, y: 0.5, xanchor: 'left'}}, annotations: [{{text: '<b>' + total.toLocaleString() + '</b>', x: 0.5, y: 0.5, showarrow: false, font: {{size: 18, color: '#fff'}}}}]}}, {{responsive: true, displayModeBar: false}});
+    const bPositions = 'outside';
+    Plotly.react('backlogChart', [{{labels, values, type: 'pie', hole: 0.5, rotation: -20, marker: {{colors}}, textinfo: 'label', textposition: bPositions, textfont: {{color: '#333', size: 13}}, outsidetextfont: {{color: '#333', size: 13}}}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Open vs Closed / Resolved', margin: {{t: 40, b: 40, l: 10, r: 10}}, showlegend: true, legend: {{font: {{size: 10, color: '#333'}}, orientation: 'v', x: 1, y: 0.5, xanchor: 'left'}}, annotations: [{{text: '<b>' + total.toLocaleString() + '</b>', x: 0.5, y: 0.5, showarrow: false, font: {{size: 22, color: '#1a1a2e'}}}}]}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderTypeChart() {{
@@ -539,8 +599,8 @@ function renderTypeChart() {{
     const values = rawLabels.map(l => byType[l]);
     const labels = rawLabels.map((l, i) => l + '<br>' + fmt(values[i]));
     const colors = {{'Incident':'#ff7b72','Service Request':'#58a6ff','Internal':'#8b949e','Other':'#ffa657'}};
-    Plotly.react('typeChart', [{{labels, values, type: 'pie', hole: 0.5, marker: {{colors: rawLabels.map(l => colors[l] || '#8b949e')}}, textinfo: 'label', textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Incident vs Service Request', margin: {{t: 40, b: 60, l: 10, r: 10}}, showlegend: true, legend: {{font: {{size: 10, color: '#c9d1d9'}}, orientation: 'h', y: -0.1, x: 0.5, xanchor: 'center'}}, annotations: [{{text: '<b>' + filtered.length.toLocaleString() + '</b>', x: 0.5, y: 0.5, showarrow: false, font: {{size: 20, color: '#fff'}}}}]}}, {{responsive: true, displayModeBar: false}});
+    Plotly.react('typeChart', [{{labels, values, type: 'pie', hole: 0.5, marker: {{colors: rawLabels.map(l => colors[l] || '#8b949e')}}, textinfo: 'label', textposition: 'outside', textfont: {{color: '#333', size: 13}}}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Incident vs Service Request', margin: {{t: 40, b: 60, l: 10, r: 10}}, showlegend: true, legend: {{font: {{size: 10, color: '#333'}}, orientation: 'h', y: -0.1, x: 0.5, xanchor: 'center'}}, annotations: [{{text: '<b>' + filtered.length.toLocaleString() + '</b>', x: 0.5, y: 0.5, showarrow: false, font: {{size: 22, color: '#1a1a2e'}}}}]}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderPriorityChart() {{
@@ -551,10 +611,10 @@ function renderPriorityChart() {{
     const colors = {{'Critical':'#ff7b72','High':'#f0883e','Medium':'#ffa657','Low':'#3fb950'}};
     const priTotal = values.reduce((a, b) => a + b, 0);
     const labels = rawLabels.map((l, i) => fmt(values[i]) + ' ' + l);
-    const priPositions = rawLabels.map(l => ['Critical', 'Medium'].includes(l) ? 'outside' : 'inside');
+    const priPositions = rawLabels.map(l => ['Critical', 'Medium', 'High', 'Low'].includes(l) ? 'outside' : 'inside');
     const priPull = rawLabels.map(l => ['Critical', 'Medium'].includes(l) ? 0.05 : 0);
-    Plotly.react('priorityChart', [{{labels, values, type: 'pie', hole: 0.4, marker: {{colors: rawLabels.map(l => colors[l] || '#8b949e')}}, textinfo: 'label', textposition: priPositions, textfont: {{color: '#fff', size: 11}}, outsidetextfont: {{color: '#c9d1d9', size: 10}}, pull: priPull}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Priority Breakdown', margin: {{t: 40, b: 10, l: 50, r: 10}}, showlegend: true, legend: {{font: {{size: 10, color: '#c9d1d9'}}, orientation: 'v', x: 1, y: 0.5, xanchor: 'left'}}, annotations: [{{text: '<b>' + filtered.length.toLocaleString() + '</b>', x: 0.5, y: 0.5, showarrow: false, font: {{size: 18, color: '#fff'}}}}]}}, {{responsive: true, displayModeBar: false}});
+    Plotly.react('priorityChart', [{{labels, values, type: 'pie', hole: 0.4, marker: {{colors: rawLabels.map(l => colors[l] || '#8b949e')}}, textinfo: 'label', textposition: priPositions, textfont: {{color: '#333', size: 13}}, outsidetextfont: {{color: '#333', size: 13}}, pull: priPull}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Priority Breakdown', margin: {{t: 60, b: 30, l: 50, r: 10}}, showlegend: true, legend: {{font: {{size: 10, color: '#333'}}, orientation: 'v', x: 1, y: 0.5, xanchor: 'left'}}, annotations: [{{text: '<b>' + filtered.length.toLocaleString() + '</b>', x: 0.5, y: 0.5, showarrow: false, font: {{size: 22, color: '#1a1a2e'}}}}]}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderEntityChart() {{
@@ -566,8 +626,8 @@ function renderEntityChart() {{
     const sorted = Object.entries(byEntity).sort((a, b) => a[1] - b[1]);
     const eColors = {{'Automotive':'#58a6ff','Group Functions':'#a371f7','Financial Services':'#3fb950','Real Estate':'#f0883e','F&B':'#f778ba','N/A':'#8b949e'}};
     const eMax = Math.max(...sorted.map(s => s[1]));
-    Plotly.react('entityChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: sorted.map(s => eColors[s[0]] || '#79c0ff')}}, text: sorted.map(s => fmt(s[1])), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 11}}, cliponaxis: false}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Tickets by Business Entity', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR, range: [0, eMax * 1.15]}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+    Plotly.react('entityChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: sorted.map(s => eColors[s[0]] || '#79c0ff')}}, text: sorted.map(s => '<b>' + fmt(s[1]) + '</b>'), textposition: 'outside', textfont: {{color: '#333', size: 11}}, cliponaxis: false}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Tickets by Business Entity', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR, range: [0, eMax * 1.15]}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderEntityUsersChart() {{
@@ -580,8 +640,8 @@ function renderEntityUsersChart() {{
     const sorted = Object.entries(byEntity).map(([k, v]) => [k, v.size]).sort((a, b) => a[1] - b[1]);
     const eColors = {{'Automotive':'#58a6ff','Group Functions':'#a371f7','Financial Services':'#3fb950','Real Estate':'#f0883e','F&B':'#f778ba','N/A':'#8b949e'}};
     const euMax = Math.max(...sorted.map(s => s[1]));
-    Plotly.react('entityUsersChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: sorted.map(s => eColors[s[0]] || '#79c0ff')}}, text: sorted.map(s => '<b>' + fmt(s[1]) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 11}}, cliponaxis: false}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Users Supported by Business Entity', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR, range: [0, euMax * 1.15]}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+    Plotly.react('entityUsersChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: sorted.map(s => eColors[s[0]] || '#79c0ff')}}, text: sorted.map(s => '<b>' + fmt(s[1]) + '</b>'), textposition: 'outside', textfont: {{color: '#333', size: 11}}, cliponaxis: false}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Users Supported by Business Entity', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR, range: [0, euMax * 1.15]}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderDeptUsersChart() {{
@@ -591,26 +651,112 @@ function renderDeptUsersChart() {{
         if (!byDept[dept]) byDept[dept] = new Set();
         if (r.requester) byDept[dept].add(r.requester);
     }});
-    const sorted = Object.entries(byDept).map(([k, v]) => [k, v.size]).sort((a, b) => a[1] - b[1]);
-    const duMax = Math.max(...sorted.map(s => s[1]));
-    Plotly.react('deptUsersChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: '#79c0ff'}}, text: sorted.map(s => '<b>' + fmt(s[1]) + '</b>'), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}, cliponaxis: false}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Users Supported by Department', margin: {{t: 40, b: 10, l: 10, r: 60}}, height: Math.max(400, sorted.length * 22 + 60), xaxis: {{visible: false, gridcolor: GRID_COLOR, range: [0, duMax * 1.15]}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+    // Sort descending, group small depts (<10 users) into Others
+    const entries = Object.entries(byDept).map(([k, v]) => [k, v.size]).sort((a, b) => b[1] - a[1]);
+    const main = entries.filter(e => e[1] >= 10);
+    const others = entries.filter(e => e[1] < 10);
+    const othersTotal = others.reduce((sum, e) => {{
+        const s = new Set();
+        filtered.forEach(r => {{ if ((r.requester_dept || 'Unknown') === e[0] && r.requester) s.add(r.requester); }});
+        return sum;
+    }}, 0);
+    // Count unique users across all small depts
+    const othersUsers = new Set();
+    filtered.forEach(r => {{
+        const dept = r.requester_dept || 'Unknown';
+        if (byDept[dept] && byDept[dept].size < 10 && r.requester) othersUsers.add(r.requester);
+    }});
+    if (othersUsers.size > 0) main.push(['Others (' + others.length + ' depts)', othersUsers.size]);
+    const duMax = Math.max(...main.map(s => s[1]));
+    const chartWidth = Math.max(800, main.length * 45);
+    document.getElementById('deptUsersChart').style.minWidth = chartWidth + 'px';
+    Plotly.react('deptUsersChart', [{{
+        x: main.map(s => s[0]),
+        y: main.map(s => s[1]),
+        type: 'bar',
+        marker: {{color: main.map(s => s[0].startsWith('Others') ? '#8b949e' : '#79c0ff')}},
+        text: main.map(s => '<b>' + fmt(s[1]) + '</b>'),
+        textposition: 'outside',
+        textfont: {{color: '#333', size: 9}},
+        cliponaxis: false
+    }}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', size: 10, family: 'Cambria, serif'}}, title: 'Users Supported by Department', margin: {{t: 40, b: 120, l: 40, r: 10}}, width: chartWidth, xaxis: {{gridcolor: GRID_COLOR, tickangle: -45, type: 'category', dtick: 1}}, yaxis: {{visible: false, gridcolor: GRID_COLOR, range: [0, duMax * 1.15]}}}}, {{responsive: false, displayModeBar: false}});
+}}
+
+function renderResPriorityChart() {{
+    const byPri = {{}};
+    const priOrder = ['Critical', 'High', 'Medium', 'Low'];
+    filtered.forEach(r => {{
+        if (r.minutes > 0 && r.priority) {{
+            if (!byPri[r.priority]) byPri[r.priority] = [];
+            byPri[r.priority].push(r.minutes);
+        }}
+    }});
+    const labels = priOrder.filter(p => byPri[p]);
+    const avgValues = labels.map(p => {{
+        const arr = byPri[p];
+        return Math.round(arr.reduce((s, v) => s + v, 0) / arr.length);
+    }});
+    const priColors = {{'Critical':'#ff7b72','High':'#f0883e','Medium':'#ffa657','Low':'#3fb950'}};
+    const rpMax = Math.max(...avgValues, 1);
+    Plotly.react('resPriorityChart', [{{x: labels, y: avgValues, type: 'bar', marker: {{color: labels.map(l => priColors[l] || '#8b949e')}}, text: avgValues.map(v => '<b>' + v + ' min</b>'), textposition: 'outside', textfont: {{color: '#333', size: 11}}}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Avg Time Spent per Ticket by Priority', margin: {{t: 40, b: 40, l: 40, r: 10}}, xaxis: {{showgrid: false}}, yaxis: {{showgrid: false, range: [0, rpMax * 1.15], showticklabels: false, title: ''}}}}, {{responsive: true, displayModeBar: false}});
+}}
+
+function renderResEntityChart() {{
+    const byEntity = {{}};
+    filtered.forEach(r => {{
+        if (r.minutes > 0 && r.entity) {{
+            if (!byEntity[r.entity]) byEntity[r.entity] = [];
+            byEntity[r.entity].push(r.minutes);
+        }}
+    }});
+    const sorted = Object.entries(byEntity).map(([k, v]) => [k, Math.round(v.reduce((s, x) => s + x, 0) / v.length)]).sort((a, b) => a[1] - b[1]);
+    const eColors = {{'Automotive':'#58a6ff','Group Functions':'#a371f7','Financial Services':'#3fb950','Real Estate':'#f0883e','F&B':'#f778ba','N/A':'#8b949e'}};
+    const reMax = Math.max(...sorted.map(s => s[1]), 1);
+    Plotly.react('resEntityChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: sorted.map(s => eColors[s[0]] || '#79c0ff')}}, text: sorted.map(s => '<b>' + s[1] + ' min</b>'), textposition: 'outside', textfont: {{color: '#333', size: 11}}, cliponaxis: false}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Avg Time Spent per Ticket by Entity', margin: {{t: 40, b: 10, l: 10, r: 80}}, xaxis: {{visible: false, range: [0, reMax * 1.2]}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+}}
+
+function renderPeakHeatmap() {{
+    const heatData = Array.from({{length: 24}}, () => Array(7).fill(0));
+    filtered.forEach(r => {{
+        if (r.hour !== null && r.dow !== null) {{
+            heatData[r.hour][r.dow]++;
+        }}
+    }});
+    const hours = Array.from({{length: 24}}, (_, i) => {{
+        if (i === 0) return '12 AM';
+        if (i < 12) return i + ' AM';
+        if (i === 12) return '12 PM';
+        return (i - 12) + ' PM';
+    }});
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const zValues = heatData.map(row => row);
+    Plotly.react('peakHeatmap', [{{
+        z: zValues, x: days, y: hours, type: 'heatmap',
+        colorscale: [[0, '#f0f0f0'], [0.25, '#ffd166'], [0.5, '#f0883e'], [0.75, '#e63946'], [1, '#9d0208']],
+        hovertemplate: '%{{y}} %{{x}}: %{{z}} tickets<extra></extra>',
+        showscale: true,
+        colorbar: {{title: 'Tickets', titlefont: {{color: '#333', family: 'Cambria, serif'}}, tickfont: {{color: '#333'}}}}
+    }}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Ticket Volume by Hour & Day of Week', margin: {{t: 40, b: 40, l: 60, r: 10}}, xaxis: {{side: 'bottom'}}, yaxis: {{autorange: 'reversed'}}}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderCategoryChart() {{
     const byCat = {{}};
     filtered.forEach(r => {{ if (r.category) byCat[r.category] = (byCat[r.category] || 0) + 1; }});
     const sorted = Object.entries(byCat).sort((a, b) => a[1] - b[1]);
-    Plotly.react('categoryChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: '#58a6ff'}}, text: sorted.map(s => fmt(s[1])), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}, cliponaxis: false}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Tickets by Category', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+    Plotly.react('categoryChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: '#58a6ff'}}, text: sorted.map(s => fmt(s[1])), textposition: 'outside', textfont: {{color: '#333', size: 10, family: 'Cambria, serif'}}, cliponaxis: false}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Tickets by Category', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderDeptChart() {{
     const byDept = {{}};
     filtered.forEach(r => {{ if (r.department) byDept[r.department] = (byDept[r.department] || 0) + 1; }});
     const sorted = Object.entries(byDept).sort((a, b) => b[1] - a[1]).slice(0, 20).reverse();
-    Plotly.react('deptChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: '#58a6ff'}}, text: sorted.map(s => fmt(s[1])), textposition: 'outside', textfont: {{color: '#c9d1d9', size: 10}}, cliponaxis: false}}],
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Top 20 Departments', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
+    Plotly.react('deptChart', [{{x: sorted.map(s => s[1]), y: sorted.map(s => s[0]), type: 'bar', orientation: 'h', marker: {{color: '#58a6ff'}}, text: sorted.map(s => fmt(s[1])), textposition: 'outside', textfont: {{color: '#333', size: 10, family: 'Cambria, serif'}}, cliponaxis: false}}],
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Top 20 Departments', margin: {{t: 40, b: 10, l: 10, r: 60}}, xaxis: {{visible: false, gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderPriDeptChart() {{
@@ -625,11 +771,11 @@ function renderPriDeptChart() {{
             byDept[r.department] = (byDept[r.department] || 0) + 1;
         }});
         if (Object.keys(byDept).length > 0) {{
-            traces.push({{x: top15.map(d => byDept[d] || 0), y: top15, type: 'bar', orientation: 'h', name: pri, marker: {{color: priColors[pri]}}, text: top15.map(d => byDept[d] || ''), textposition: 'inside', textfont: {{color: '#fff', size: 10}}}});
+            traces.push({{x: top15.map(d => byDept[d] || 0), y: top15, type: 'bar', orientation: 'h', name: pri, marker: {{color: priColors[pri]}}, text: top15.map(d => byDept[d] || ''), textposition: 'inside', textfont: {{color: '#333', size: 10}}}});
         }}
     }});
     Plotly.react('priDeptChart', traces,
-        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#c9d1d9'}}, title: 'Priority Distribution by Department', barmode: 'stack', margin: {{t: 40, b: 10, l: 10, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}, legend: {{orientation: 'h', y: 1.08, font: {{color: '#c9d1d9'}}}}}}, {{responsive: true, displayModeBar: false}});
+        {{paper_bgcolor: CHART_BG, plot_bgcolor: CHART_BG, font: {{color: '#333', family: 'Cambria, serif'}}, title: 'Priority Distribution by Department', barmode: 'stack', margin: {{t: 40, b: 10, l: 10, r: 10}}, xaxis: {{gridcolor: GRID_COLOR}}, yaxis: {{gridcolor: GRID_COLOR, automargin: true}}, legend: {{orientation: 'h', y: 1.08, font: {{color: '#333'}}}}}}, {{responsive: true, displayModeBar: false}});
 }}
 
 function renderTable() {{
@@ -752,6 +898,18 @@ flatpickr('#dateTo', {{
     defaultDate: '03/04/2026',
     theme: 'dark'
 }});
+
+function downloadDeptUsersChart() {{
+    const el = document.getElementById('deptUsersChart');
+    const w = Math.max(1600, el.scrollWidth || 1600);
+    Plotly.downloadImage('deptUsersChart', {{
+        format: 'png',
+        width: w,
+        height: 800,
+        filename: 'users_supported_by_department',
+        scale: 2
+    }});
+}}
 
 // Initialize
 applyFilters();
